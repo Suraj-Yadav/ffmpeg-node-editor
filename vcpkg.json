@@ -1,0 +1,20 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "ffmpeg-node-editor",
+    "dependencies": [
+        "abseil",
+        "glfw3",
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding",
+                "opengl3-binding"
+            ]
+        },
+        "imgui-node-editor",
+        "nlohmann-json",
+        "re2",
+        "spdlog",
+        "tiny-process-library"
+    ]
+}
