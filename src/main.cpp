@@ -4,6 +4,7 @@
 #include "node_editor.hpp"
 
 int main() {
+	GraphState state;
 	std::set_terminate([]() {
 		auto excPtr = std::current_exception();
 		try {
@@ -22,7 +23,6 @@ int main() {
 			ImGuiConfigFlags_NavEnableGamepad)) {
 		return 1;
 	}
-	ImGuiIO& io = ImGui::GetIO();
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
@@ -36,30 +36,9 @@ int main() {
 
 	NodeEditor editor(&profile);
 
-	editor.addNode(profile.filters.front());
-	editor.addNode(profile.filters.front());
-	editor.addNode(profile.filters.front());
-	editor.addNode(profile.filters.front());
-	editor.addNode(profile.filters.front());
-
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
-		//
-		// 1) Commit known data to editor
-		//
-
 		editor.draw();
-
-		// Submit Links
-		// for (auto& linkInfo : m_Links)
-		// 	ed::Link(linkInfo.Id, linkInfo.InputId, linkInfo.OutputId);
-
-		//
-		// 2) Handle interactions
-		//
-
-		// Handle creation action, returns true if editor want to create new
-		// object (node or link)
 
 		// Rendering
 		backend.Render(clear_color);

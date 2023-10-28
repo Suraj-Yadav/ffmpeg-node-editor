@@ -17,6 +17,8 @@
 STRONG_TYPEDEF(NodeId, size_t);
 STRONG_TYPEDEF(LinkId, size_t);
 
+const LinkId INVALID_LINK{0};
+
 class FilterNode {
 	std::reference_wrapper<const Filter> ref;
 
@@ -24,13 +26,14 @@ class FilterNode {
 	NodeId id;
 	std::string name;
 	std::map<absl::string_view, std::string> option;
-	std::vector<int> inputSocketIds;
-	std::vector<int> outputSocketIds;
+	std::vector<size_t> inputSocketIds;
+	std::vector<size_t> outputSocketIds;
 
 	FilterNode(const Filter& f, int i) : ref(f), id(i), name(f.name) {}
 
 	const std::vector<Socket>& input() const { return ref.get().input; }
 	const std::vector<Socket>& output() const { return ref.get().output; }
+	const Filter& base() const { return ref; }
 };
 
 struct Link {

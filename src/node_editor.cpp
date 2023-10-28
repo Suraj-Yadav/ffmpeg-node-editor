@@ -1,7 +1,21 @@
 #include "node_editor.hpp"
 
+#include <fmt/core.h>
+#include <imgui.h>
+#include <vcruntime.h>
+
+#include <functional>
+#include <iostream>
+#include <ostream>
+#include <string>
+
+#include "ffmpeg/filter_graph.hpp"
+#include "ffmpeg/filter_node.hpp"
 #include "imgui_extras.hpp"
 
+#define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
+
+using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
 NodeEditor::NodeEditor(Profile* p) : profile(p) {
@@ -13,8 +27,6 @@ NodeEditor::NodeEditor(Profile* p) : profile(p) {
 NodeEditor::~NodeEditor() { ed::DestroyEditor(context); }
 
 void NodeEditor::drawNode(const FilterNode& node) {
-	using namespace ImGui;
-
 	const auto nodeId = node.id.val;
 
 	ed::BeginNode(nodeId);
@@ -30,6 +42,24 @@ void NodeEditor::drawNode(const FilterNode& node) {
 	PushRightEdge(nSize.x - lPad - rPad - 2 * borderW);
 
 	AlignedText(node.name, TextAlign::AlignCenter);
+	SameLine();
+
+	PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
+	PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
+	PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
+	PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
+	if (ArrowButton(fmt::format("{}", nodeId).c_str(), ImGuiDir_Right)) {
+		g.iterateNodes(
+			[](const FilterNode& node, const size_t u) {
+				for (auto& i : node.inputSocketIds) { fmt::print("[s{}]", i); }
+				fmt::print("{}@n{}", node.base().name, node.name);
+				for (auto& o : node.outputSocketIds) { fmt::print("[s{}]", o); }
+				fmt::println(";");
+			},
+			NodeIterOrder::Topological);
+		std::cout << std::endl;
+	}
+	PopStyleColor(4);
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
 
@@ -41,7 +71,7 @@ void NodeEditor::drawNode(const FilterNode& node) {
 			AlignedText(ins[i].name);
 			pins.emplace_back(
 				GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0),
-				IM_COL32(255, 0, 0, 255));
+				IM_COL(255, 0, 0));
 			ed::PinRect(
 				pins.back().first - ImVec2(pinRadius, pinRadius),
 				pins.back().first + ImVec2(pinRadius, pinRadius));
@@ -52,8 +82,8 @@ void NodeEditor::drawNode(const FilterNode& node) {
 			ed::BeginPin(node.outputSocketIds[i], ed::PinKind::Output);
 			ImGui::AlignedText(outs[i].name, ImGui::AlignRight);
 			pins.emplace_back(
-				GetItemRectPoint(1, 0.5) + ImVec2(rPad - borderW / 2, 0),
-				IM_COL32(0, 255, 0, 255));
+				GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0),
+				IM_COL(0, 255, 0));
 			ed::PinRect(
 				pins.back().first - ImVec2(pinRadius, pinRadius),
 				pins.back().first + ImVec2(pinRadius, pinRadius));
@@ -72,7 +102,6 @@ void NodeEditor::drawNode(const FilterNode& node) {
 		Corner_TopLeft | Corner_TopRight);
 
 	for (auto& pin : pins) {
-		// ImGui::GetWindowDrawList()->AddCircleFilled(
 		list->AddCircleFilled(pin.first, pinRadius, pin.second);
 	}
 }
@@ -109,11 +138,12 @@ void NodeEditor::draw() {
 	ed::SetCurrentEditor(context);
 	ed::Begin(g.getName().c_str());
 
-	for (auto& node : g.getNodes()) { drawNode(node); }
+	g.iterateNodes(
+		[this](const FilterNode& node, const size_t&) { drawNode(node); });
 
-	for (auto& link : g.getLinks()) {
-		ed::Link(link.id.val, link.src, link.dest);
-	}
+	g.iterateLinks([](const LinkId& id, const size_t& s, const size_t& d) {
+		ed::Link(id.val, s, d);
+	});
 
 	if (ed::BeginCreate()) {
 		ed::PinId inputPinId, outputPinId;
@@ -141,9 +171,10 @@ void NodeEditor::draw() {
 					// ed::AcceptNewItem() return true when user release
 					// mouse button.
 					if (ed::AcceptNewItem()) {
-						g.addLink(pin1, pin2);
-						const auto& link = g.getLinks().back();
-						ed::Link(link.id.val, link.src, link.dest);
+						const auto& linkId = g.addLink(pin1, pin2);
+						if (linkId != INVALID_LINK) {
+							ed::Link(linkId.val, pin1, pin2);
+						}
 					}
 				} else {
 					// You may choose to reject connection between these

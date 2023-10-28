@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 
 find_package(absl CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -15,11 +16,13 @@ find_package(tiny-process-library CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
 
 add_executable(ffmpeg_node_editor 
-    src/main.cpp
     src/backend.cpp
-    src/imgui_extras.cpp
-    src/ffmpeg/runner.cpp
+    src/ffmpeg/filter_graph.cpp
     src/ffmpeg/profile.cpp
+    src/ffmpeg/runner.cpp
+    src/imgui_extras.cpp
+    src/main.cpp
+    src/node_editor.cpp
 )
 
 target_include_directories(ffmpeg_node_editor PUBLIC "${CMAKE_SOURCE_DIR}/include")
@@ -27,6 +30,7 @@ target_include_directories(ffmpeg_node_editor PUBLIC "${CMAKE_SOURCE_DIR}/includ
 target_link_libraries(ffmpeg_node_editor PRIVATE 
     ${OPENGL_gl_LIBRARY}
     absl::strings 
+    fmt::fmt
     glfw 
     imgui::imgui 
     nlohmann_json::nlohmann_json

@@ -12,22 +12,32 @@
 #include "ffmpeg/filter_node.hpp"
 #include "filter_node.hpp"
 
+enum NodeIterOrder { Default, Topological };
+
+using EdgeIterCallback =
+	std::function<void(const LinkId& id, const size_t& u, const size_t& v)>;
+
+using NodeIterCallback =
+	std::function<void(const FilterNode&, const size_t& u)>;
+
+struct GraphState {
+	std::vector<bool> valid;
+	std::vector<bool> isSocket;
+	std::vector<bool> isInput;
+	std::vector<size_t> vertIdToNodeIndex;
+	std::vector<size_t> vertIdToSocketIndex;
+	std::vector<std::vector<size_t>> adjList;
+};
+
 class FilterGraph {
 	std::vector<FilterNode> nodes;
-	std::vector<Link> links;
 
-	std::unordered_map<int, size_t> socketIdToNode;
-	std::unordered_map<size_t, size_t> linkIdToLink;
+	GraphState state;
 
 	std::string name;
 
 	int nextNodeId;
 	size_t nextLinkId;
-
-	bool getSocket(int socketId, Socket& s, bool& isInput) const;
-
-	void deleteLink(size_t index);
-	void deleteNode(size_t index);
 
    public:
 	FilterGraph(const std::string& n = "Untitled")
@@ -36,10 +46,14 @@ class FilterGraph {
 	void addNode(const Filter& filter);
 	void deleteNode(NodeId id);
 	void deleteLink(LinkId id);
-	bool canAddLink(int id1, int id2);
-	void addLink(int id1, int id2);
+	bool canAddLink(size_t u, size_t v);
+	const LinkId addLink(size_t u, size_t v);
+
+	void iterateNodes(
+		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default);
+
+	void iterateLinks(
+		EdgeIterCallback cb, size_t u = std::numeric_limits<size_t>::max());
 
 	inline const std::string& getName() const { return name; }
-	inline const std::vector<FilterNode>& getNodes() const { return nodes; }
-	inline const std::vector<Link>& getLinks() const { return links; }
 };
