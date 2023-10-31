@@ -9,16 +9,23 @@
 #include <vector>
 
 #include "ffmpeg/filter.hpp"
+#include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
 #include "filter_node.hpp"
 
 enum NodeIterOrder { Default, Topological };
 
 using EdgeIterCallback =
-	std::function<void(const LinkId& id, const size_t& u, const size_t& v)>;
+	std::function<void(const LinkId& id, const NodeId& u, const NodeId& v)>;
 
 using NodeIterCallback =
-	std::function<void(const FilterNode&, const size_t& u)>;
+	std::function<void(const FilterNode&, const NodeId& id)>;
+
+using InputSocketCallback = std::function<void(
+	const Socket&, const NodeId& id, const NodeId& parentId)>;
+
+using OutputSocketCallback =
+	std::function<void(const Socket&, const NodeId& id)>;
 
 struct GraphState {
 	std::vector<bool> valid;
@@ -26,7 +33,8 @@ struct GraphState {
 	std::vector<bool> isInput;
 	std::vector<size_t> vertIdToNodeIndex;
 	std::vector<size_t> vertIdToSocketIndex;
-	std::vector<std::vector<size_t>> adjList;
+	// std::vector<std::vector<size_t>> adjList;
+	std::vector<std::vector<size_t>> revAdjList;
 };
 
 class FilterGraph {
@@ -36,24 +44,23 @@ class FilterGraph {
 
 	std::string name;
 
-	int nextNodeId;
-	size_t nextLinkId;
-
    public:
-	FilterGraph(const std::string& n = "Untitled")
-		: name(n), nextNodeId(1), nextLinkId(1) {}
+	FilterGraph(const std::string& n = "Untitled") : name(n) {}
 
 	void addNode(const Filter& filter);
 	void deleteNode(NodeId id);
 	void deleteLink(LinkId id);
-	bool canAddLink(size_t u, size_t v);
-	const LinkId addLink(size_t u, size_t v);
+	bool canAddLink(NodeId u, NodeId v);
+	const LinkId addLink(NodeId u, NodeId v);
 
 	void iterateNodes(
-		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default);
+		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default,
+		NodeId u = INVALID_NODE);
 
-	void iterateLinks(
-		EdgeIterCallback cb, size_t u = std::numeric_limits<size_t>::max());
+	void iterateLinks(EdgeIterCallback cb);
+
+	void inputSockets(NodeId u, InputSocketCallback cb);
+	void outputSockets(NodeId u, OutputSocketCallback cb);
 
 	inline const std::string& getName() const { return name; }
 };

@@ -16,7 +16,10 @@ class NodeEditor {
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
 
-	void drawNode(const FilterNode& node);
+	const char* popup;
+	std::string popupString;
+
+	void drawNode(const FilterNode& node, const NodeId& id);
 	void searchBar();
 
    public:

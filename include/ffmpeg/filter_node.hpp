@@ -14,22 +14,24 @@
 		bool operator==(const NEW_TYPE& rhs) const { return val == rhs.val; } \
 	};
 
-STRONG_TYPEDEF(NodeId, size_t);
-STRONG_TYPEDEF(LinkId, size_t);
+using IdBaseType = size_t;
 
+STRONG_TYPEDEF(NodeId, IdBaseType);
+STRONG_TYPEDEF(LinkId, IdBaseType);
+
+const NodeId INVALID_NODE{0};
 const LinkId INVALID_LINK{0};
 
 class FilterNode {
 	std::reference_wrapper<const Filter> ref;
 
    public:
-	NodeId id;
 	std::string name;
 	std::map<absl::string_view, std::string> option;
-	std::vector<size_t> inputSocketIds;
-	std::vector<size_t> outputSocketIds;
+	std::vector<NodeId> inputSocketIds;
+	std::vector<NodeId> outputSocketIds;
 
-	FilterNode(const Filter& f, int i) : ref(f), id(i), name(f.name) {}
+	FilterNode(const Filter& f) : ref(f), name(f.name) {}
 
 	const std::vector<Socket>& input() const { return ref.get().input; }
 	const std::vector<Socket>& output() const { return ref.get().output; }

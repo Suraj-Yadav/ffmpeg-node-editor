@@ -18,7 +18,7 @@
 using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
-NodeEditor::NodeEditor(Profile* p) : profile(p) {
+NodeEditor::NodeEditor(Profile* p) : profile(p), popup(nullptr) {
 	ed::Config config;
 	config.SettingsFile = nullptr;
 	context = ed::CreateEditor(&config);
@@ -26,8 +26,10 @@ NodeEditor::NodeEditor(Profile* p) : profile(p) {
 
 NodeEditor::~NodeEditor() { ed::DestroyEditor(context); }
 
-void NodeEditor::drawNode(const FilterNode& node) {
-	const auto nodeId = node.id.val;
+const auto POPUP_MISSING_INPUT = "Missing Input";
+
+void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
+	const auto nodeId = id.val;
 
 	ed::BeginNode(nodeId);
 
@@ -48,16 +50,35 @@ void NodeEditor::drawNode(const FilterNode& node) {
 	PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
 	PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
 	PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
+
 	if (ArrowButton(fmt::format("{}", nodeId).c_str(), ImGuiDir_Right)) {
+		bool invalid = false;
 		g.iterateNodes(
-			[](const FilterNode& node, const size_t u) {
-				for (auto& i : node.inputSocketIds) { fmt::print("[s{}]", i); }
-				fmt::print("{}@n{}", node.base().name, node.name);
-				for (auto& o : node.outputSocketIds) { fmt::print("[s{}]", o); }
+			[this, &invalid](const FilterNode& node, const NodeId& id) {
+				if (invalid) { return; }
+				g.inputSockets(
+					id, [&invalid, &node, this](
+							const Socket& s, const NodeId& sId,
+							const NodeId& parentSocketId) {
+						if (invalid) { return; }
+						if (parentSocketId == INVALID_NODE) {
+							invalid = true;
+							popup = POPUP_MISSING_INPUT;
+							popupString = fmt::format(
+								"Socket {} of node {} needs an input", s.name,
+								node.name);
+							return;
+						}
+						fmt::print("[{}]", parentSocketId.val);
+					});
+				if (invalid) { return; }
+				fmt::print("{}@{}{}", node.base().name, node.name, id.val);
+				g.outputSockets(id, [](const Socket&, const NodeId& socketId) {
+					fmt::print("[{}]", socketId.val);
+				});
 				fmt::println(";");
 			},
-			NodeIterOrder::Topological);
-		std::cout << std::endl;
+			NodeIterOrder::Topological, id);
 	}
 	PopStyleColor(4);
 
@@ -67,7 +88,7 @@ void NodeEditor::drawNode(const FilterNode& node) {
 	const auto& outs = node.output();
 	for (auto i = 0u; i < std::max(ins.size(), outs.size()); ++i) {
 		if (i < ins.size()) {
-			ed::BeginPin(node.inputSocketIds[i], ed::PinKind::Input);
+			ed::BeginPin(node.inputSocketIds[i].val, ed::PinKind::Input);
 			AlignedText(ins[i].name);
 			pins.emplace_back(
 				GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0),
@@ -79,7 +100,7 @@ void NodeEditor::drawNode(const FilterNode& node) {
 		}
 		if (i < outs.size()) {
 			if (i < ins.size()) { ImGui::SameLine(); }
-			ed::BeginPin(node.outputSocketIds[i], ed::PinKind::Output);
+			ed::BeginPin(node.outputSocketIds[i].val, ed::PinKind::Output);
 			ImGui::AlignedText(outs[i].name, ImGui::AlignRight);
 			pins.emplace_back(
 				GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0),
@@ -104,6 +125,19 @@ void NodeEditor::drawNode(const FilterNode& node) {
 	for (auto& pin : pins) {
 		list->AddCircleFilled(pin.first, pinRadius, pin.second);
 	}
+
+	ed::Suspend();
+	if (popup != nullptr) {
+		ImGui::OpenPopup(popup);
+		popup = nullptr;
+	}
+	if (ImGui::BeginPopupModal(
+			POPUP_MISSING_INPUT, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::Text("%s", popupString.c_str());
+		if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
+		ImGui::EndPopup();
+	}
+	ed::Resume();
 }
 
 void NodeEditor::searchBar() {
@@ -138,11 +172,12 @@ void NodeEditor::draw() {
 	ed::SetCurrentEditor(context);
 	ed::Begin(g.getName().c_str());
 
-	g.iterateNodes(
-		[this](const FilterNode& node, const size_t&) { drawNode(node); });
+	g.iterateNodes([this](const FilterNode& node, const NodeId& id) {
+		drawNode(node, id);
+	});
 
-	g.iterateLinks([](const LinkId& id, const size_t& s, const size_t& d) {
-		ed::Link(id.val, s, d);
+	g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
+		ed::Link(id.val, s.val, d.val);
 	});
 
 	if (ed::BeginCreate()) {
@@ -165,13 +200,14 @@ void NodeEditor::draw() {
 			//   * input valid, output valid   - user dragged link over
 			//   other pin, can be validated
 			if (inputPinId && outputPinId) {
-				auto pin1 = static_cast<int>(inputPinId.Get());
-				auto pin2 = static_cast<int>(outputPinId.Get());
-				if (g.canAddLink(pin1, pin2)) {
+				auto pin1 = inputPinId.Get();
+				auto pin2 = outputPinId.Get();
+				fmt::println("{}->{}", pin1, pin2);
+				if (g.canAddLink({pin1}, {pin2})) {
 					// ed::AcceptNewItem() return true when user release
 					// mouse button.
 					if (ed::AcceptNewItem()) {
-						const auto& linkId = g.addLink(pin1, pin2);
+						const auto& linkId = g.addLink({pin1}, {pin2});
 						if (linkId != INVALID_LINK) {
 							ed::Link(linkId.val, pin1, pin2);
 						}
