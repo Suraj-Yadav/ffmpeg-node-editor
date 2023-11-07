@@ -13,8 +13,10 @@
 #include <iostream>
 #include <ostream>
 #include <ranges>
+#include <set>
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
@@ -44,12 +46,12 @@ const auto POPUP_ADD_OPT = "Select Option";
 void NodeEditor::play(const NodeId& id) {
 	bool invalid = false;
 	fmt::memory_buffer buff;
+	std::set<IdBaseType> outputs;
 	g.iterateNodes(
-		[this, &invalid, &buff](const FilterNode& node, const NodeId& id) {
+		[&](const FilterNode& node, const NodeId& id) {
 			if (invalid) { return; }
 			g.inputSockets(
-				id, [&invalid, &node, this, &buff](
-						const Socket& s, const NodeId& sId,
+				id, [&](const Socket& s, const NodeId& sId,
 						const NodeId& parentSocketId) {
 					if (invalid) { return; }
 					if (parentSocketId == INVALID_NODE) {
@@ -60,20 +62,37 @@ void NodeEditor::play(const NodeId& id) {
 							node.name);
 						return;
 					}
+					outputs.erase(parentSocketId.val);
 					fmt::format_to(
-						std::back_inserter(buff), "[{}]", parentSocketId.val);
+						std::back_inserter(buff), "[s{}]", parentSocketId.val);
 				});
 			if (invalid) { return; }
 			fmt::format_to(
 				std::back_inserter(buff), "{}@{}{}", node.base().name,
 				node.name, id.val);
-			g.outputSockets(id, [&buff](const Socket&, const NodeId& socketId) {
-				fmt::format_to(std::back_inserter(buff), "[{}]", socketId.val);
+			if (!node.option.empty()) {
+				buff.push_back('=');
+				bool first = true;
+				for (const auto& [name, value] : node.option) {
+					if (!first) { buff.push_back(':'); }
+					fmt::format_to(
+						std::back_inserter(buff), "{}={}", name.data(), value);
+					first = false;
+				}
+			}
+			g.outputSockets(id, [&](const Socket&, const NodeId& socketId) {
+				outputs.insert(socketId.val);
+				fmt::format_to(std::back_inserter(buff), "[s{}]", socketId.val);
 			});
-			fmt::format_to(std::back_inserter(buff), ";\n");
+			fmt::format_to(std::back_inserter(buff), ";");
 		},
 		NodeIterOrder::Topological, id);
-	if (!invalid) { spdlog::info(fmt::to_string(buff)); }
+	if (!invalid) {
+		std::vector<std::string> out;
+		for (auto& e : outputs) { out.push_back(std::format("[s{}]", e)); }
+		spdlog::info(fmt::to_string(buff));
+		profile->runner.play(fmt::to_string(buff), out);
+	}
 }
 
 void NodeEditor::drawNode(FilterNode& node, const NodeId& id) {
