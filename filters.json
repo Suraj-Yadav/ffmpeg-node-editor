@@ -38875,46 +38875,6 @@
             {
                 "allowed": [
                     {
-                        "desc": "Repeat the previous frame.",
-                        "value": "repeat"
-                    },
-                    {
-                        "desc": "End both streams.",
-                        "value": "endall"
-                    },
-                    {
-                        "desc": "Pass through the main input.",
-                        "value": "pass"
-                    }
-                ],
-                "defaultValue": "repeat",
-                "desc": "Action to take when encountering EOF from secondary input",
-                "max": "2",
-                "min": "0",
-                "name": "eof_action",
-                "type": "int"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "force termination when the shortest input terminates",
-                "max": "",
-                "min": "",
-                "name": "shortest",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "true",
-                "desc": "extend last frame of secondary streams beyond EOF",
-                "max": "",
-                "min": "",
-                "name": "repeatlast",
-                "type": "boolean"
-            },
-            {
-                "allowed": [
-                    {
                         "desc": "Frame from secondary input with the nearest lower or equal timestamp to the primary input frame",
                         "value": "default"
                     },
@@ -39032,46 +38992,6 @@
                 "allowed": [],
                 "defaultValue": "true",
                 "desc": "repeat overlay of the last overlay frame",
-                "max": "",
-                "min": "",
-                "name": "repeatlast",
-                "type": "boolean"
-            },
-            {
-                "allowed": [
-                    {
-                        "desc": "Repeat the previous frame.",
-                        "value": "repeat"
-                    },
-                    {
-                        "desc": "End both streams.",
-                        "value": "endall"
-                    },
-                    {
-                        "desc": "Pass through the main input.",
-                        "value": "pass"
-                    }
-                ],
-                "defaultValue": "repeat",
-                "desc": "Action to take when encountering EOF from secondary input",
-                "max": "2",
-                "min": "0",
-                "name": "eof_action",
-                "type": "int"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "force termination when the shortest input terminates",
-                "max": "",
-                "min": "",
-                "name": "shortest",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "true",
-                "desc": "extend last frame of secondary streams beyond EOF",
                 "max": "",
                 "min": "",
                 "name": "repeatlast",
@@ -39237,46 +39157,6 @@
                 "allowed": [],
                 "defaultValue": "true",
                 "desc": "repeat overlay of the last overlay frame",
-                "max": "",
-                "min": "",
-                "name": "repeatlast",
-                "type": "boolean"
-            },
-            {
-                "allowed": [
-                    {
-                        "desc": "Repeat the previous frame.",
-                        "value": "repeat"
-                    },
-                    {
-                        "desc": "End both streams.",
-                        "value": "endall"
-                    },
-                    {
-                        "desc": "Pass through the main input.",
-                        "value": "pass"
-                    }
-                ],
-                "defaultValue": "repeat",
-                "desc": "Action to take when encountering EOF from secondary input",
-                "max": "2",
-                "min": "0",
-                "name": "eof_action",
-                "type": "int"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "force termination when the shortest input terminates",
-                "max": "",
-                "min": "",
-                "name": "shortest",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "true",
-                "desc": "extend last frame of secondary streams beyond EOF",
                 "max": "",
                 "min": "",
                 "name": "repeatlast",

@@ -1,3 +1,4 @@
+#include <absl/strings/string_view.h>
 #include <imgui.h>
 
 #include <string>
@@ -16,8 +17,15 @@ namespace ImGui {
 	void PushRightEdge(float width);
 	void PopRightEdge();
 
+	float GetRemainingWidth();
 	void AlignedText(
-		const std::string& text, TextAlign align = TextAlign::AlignLeft);
+		absl::string_view text, TextAlign align = TextAlign::AlignLeft,
+		float* maxTextWidth = nullptr);
+
+	inline void AlignedText(
+		absl::string_view text, float* maxTextWidth = nullptr) {
+		AlignedText(text, TextAlign::AlignLeft, maxTextWidth);
+	}
 
 	const int Corner_TopLeft = 1 << 0;
 	const int Corner_TopRight = 1 << 1;

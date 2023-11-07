@@ -278,13 +278,24 @@ Profile GetProfile() {
 		auto json = nlohmann::json::parse(std::ifstream("filters.json"));
 		profile.filters = json.template get<std::vector<Filter>>();
 		return profile;
-	} catch (nlohmann::json::exception& ex) {}
+	} catch (nlohmann::json::exception&) {}
 
 	FilterParser p;
 	runner.lineScanner(
 		{"-filters"}, [&runner, &p, &profile](absl::string_view line) {
 			auto f = p.parseFilter(runner, line);
-			if (f.has_value()) { profile.filters.push_back(f.value()); }
+			if (f.has_value()) {
+				std::set<std::string> optNames;
+				for (auto itr = f->options.begin(); itr != f->options.end();) {
+					if (optNames.contains(itr->name)) {
+						itr = f->options.erase(itr);
+					} else {
+						optNames.insert(itr->name);
+						++itr;
+					}
+				}
+				profile.filters.push_back(f.value());
+			}
 			return true;
 		});
 

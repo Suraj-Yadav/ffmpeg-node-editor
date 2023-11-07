@@ -1,5 +1,8 @@
 #pragma once
 
+#include <absl/strings/string_view.h>
+
+#include "ffmpeg/filter_node.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <imgui-node-editor/imgui_node_editor.h>
@@ -16,15 +19,18 @@ class NodeEditor {
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
 
-	const char* popup;
+	absl::string_view popup;
 	std::string popupString;
+	NodeId activeNode;
 
-	void drawNode(const FilterNode& node, const NodeId& id);
+	void drawNode(FilterNode& node, const NodeId& id);
 	void searchBar();
+	void popups();
 
    public:
 	NodeEditor(Profile* p = nullptr);
 	~NodeEditor();
 	void draw();
 	void addNode(const Filter& filter) { g.addNode(filter); }
+	void play(const NodeId& id = INVALID_NODE);
 };

@@ -1,3 +1,5 @@
+#include <spdlog/spdlog.h>
+
 #include <iostream>
 
 #include "backend.hpp"
@@ -10,7 +12,7 @@ int main() {
 		try {
 			if (excPtr) { std::rethrow_exception(excPtr); }
 		} catch (const std::exception& e) {
-			std::cout << "Unhandled exception: " << e.what() << std::endl;
+			spdlog::critical("Unhandled exception {}\n", e.what());
 		}
 		std::abort();
 	});

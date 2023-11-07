@@ -18,8 +18,7 @@ enum NodeIterOrder { Default, Topological };
 using EdgeIterCallback =
 	std::function<void(const LinkId& id, const NodeId& u, const NodeId& v)>;
 
-using NodeIterCallback =
-	std::function<void(const FilterNode&, const NodeId& id)>;
+using NodeIterCallback = std::function<void(FilterNode&, const NodeId& id)>;
 
 using InputSocketCallback = std::function<void(
 	const Socket&, const NodeId& id, const NodeId& parentId)>;
@@ -63,4 +62,6 @@ class FilterGraph {
 	void outputSockets(NodeId u, OutputSocketCallback cb);
 
 	inline const std::string& getName() const { return name; }
+	const FilterNode& getNode(NodeId id) const;
+	FilterNode& getNode(NodeId id);
 };

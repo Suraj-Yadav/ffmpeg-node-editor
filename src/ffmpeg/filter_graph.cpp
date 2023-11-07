@@ -12,8 +12,7 @@
 
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_node.hpp"
-
-#define contains(X, Y) (std::find((X).cbegin(), (X).cend(), (Y)) != (X).cend())
+#include "util.hpp"
 
 const int LINK_ID_SHIFT = std::numeric_limits<IdBaseType>::digits / 2;
 
@@ -112,10 +111,7 @@ const LinkId FilterGraph::addLink(NodeId uu, NodeId vv) {
 	auto u = getU(uu), v = getU(vv);
 	if (!canAddEdge(state, nodes, u, v)) { return INVALID_LINK; }
 	if (state.isInput[u]) { std::swap(u, v); }
-	if (addEdge(state, u, v)) {
-		fmt::println("Added link {}->{}", uu.val, vv.val);
-		return getLinkId(u, v);
-	}
+	if (addEdge(state, u, v)) { return getLinkId(u, v); }
 	return INVALID_LINK;
 }
 
@@ -144,7 +140,7 @@ void FilterGraph::iterateLinks(EdgeIterCallback cb) {
 
 void dfs(
 	const GraphState& state, std::vector<bool>& marked,
-	const std::vector<FilterNode>& nodes, IdBaseType v, NodeIterCallback cb) {
+	std::vector<FilterNode>& nodes, IdBaseType v, NodeIterCallback cb) {
 	marked[v] = true;
 	if (!state.valid[v]) { return; }
 	for (auto& u : state.revAdjList[v]) {
@@ -203,4 +199,11 @@ void FilterGraph::outputSockets(NodeId uu, OutputSocketCallback cb) {
 		const auto& socketId = node.outputSocketIds[i];
 		cb(socket, socketId);
 	}
+}
+
+const FilterNode& FilterGraph::getNode(NodeId id) const {
+	return nodes[state.vertIdToNodeIndex[getU(id)]];
+}
+FilterNode& FilterGraph::getNode(NodeId id) {
+	return nodes[state.vertIdToNodeIndex[getU(id)]];
 }

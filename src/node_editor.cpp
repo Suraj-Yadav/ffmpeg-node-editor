@@ -1,24 +1,32 @@
 #include "node_editor.hpp"
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 #include <imgui.h>
+#include <imgui_stdlib.h>
+#include <spdlog/spdlog.h>
 #include <vcruntime.h>
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 #include <iostream>
 #include <ostream>
+#include <ranges>
 #include <string>
+#include <tuple>
 
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
 #include "imgui_extras.hpp"
+#include "util.hpp"
 
 #define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
 
 using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
-NodeEditor::NodeEditor(Profile* p) : profile(p), popup(nullptr) {
+NodeEditor::NodeEditor(Profile* p) : profile(p), popup("") {
 	ed::Config config;
 	config.SettingsFile = nullptr;
 	context = ed::CreateEditor(&config);
@@ -27,10 +35,50 @@ NodeEditor::NodeEditor(Profile* p) : profile(p), popup(nullptr) {
 NodeEditor::~NodeEditor() { ed::DestroyEditor(context); }
 
 const auto POPUP_MISSING_INPUT = "Missing Input";
+const auto POPUP_ADD_OPT = "Select Option";
 
-void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
+#define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
+#define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
+#define OPT_ID(X)		  int(((X) << 4) + 3)
+
+void NodeEditor::play(const NodeId& id) {
+	bool invalid = false;
+	fmt::memory_buffer buff;
+	g.iterateNodes(
+		[this, &invalid, &buff](const FilterNode& node, const NodeId& id) {
+			if (invalid) { return; }
+			g.inputSockets(
+				id, [&invalid, &node, this, &buff](
+						const Socket& s, const NodeId& sId,
+						const NodeId& parentSocketId) {
+					if (invalid) { return; }
+					if (parentSocketId == INVALID_NODE) {
+						invalid = true;
+						popup = POPUP_MISSING_INPUT;
+						popupString = fmt::format(
+							"Socket {} of node {} needs an input", s.name,
+							node.name);
+						return;
+					}
+					fmt::format_to(
+						std::back_inserter(buff), "[{}]", parentSocketId.val);
+				});
+			if (invalid) { return; }
+			fmt::format_to(
+				std::back_inserter(buff), "{}@{}{}", node.base().name,
+				node.name, id.val);
+			g.outputSockets(id, [&buff](const Socket&, const NodeId& socketId) {
+				fmt::format_to(std::back_inserter(buff), "[{}]", socketId.val);
+			});
+			fmt::format_to(std::back_inserter(buff), ";\n");
+		},
+		NodeIterOrder::Topological, id);
+	if (!invalid) { spdlog::info(fmt::to_string(buff)); }
+}
+
+void NodeEditor::drawNode(FilterNode& node, const NodeId& id) {
 	const auto nodeId = id.val;
-
+	auto maxTextWidth = 0.0f;
 	ed::BeginNode(nodeId);
 
 	const auto& style = ed::GetStyle();
@@ -43,7 +91,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 	PushRightEdge(nSize.x - lPad - rPad - 2 * borderW);
 
-	AlignedText(node.name, TextAlign::AlignCenter);
+	AlignedText(node.name, TextAlign::AlignCenter, &maxTextWidth);
 	SameLine();
 
 	PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
@@ -51,66 +99,91 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
 	PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
 
-	if (ArrowButton(fmt::format("{}", nodeId).c_str(), ImGuiDir_Right)) {
-		bool invalid = false;
-		g.iterateNodes(
-			[this, &invalid](const FilterNode& node, const NodeId& id) {
-				if (invalid) { return; }
-				g.inputSockets(
-					id, [&invalid, &node, this](
-							const Socket& s, const NodeId& sId,
-							const NodeId& parentSocketId) {
-						if (invalid) { return; }
-						if (parentSocketId == INVALID_NODE) {
-							invalid = true;
-							popup = POPUP_MISSING_INPUT;
-							popupString = fmt::format(
-								"Socket {} of node {} needs an input", s.name,
-								node.name);
-							return;
-						}
-						fmt::print("[{}]", parentSocketId.val);
-					});
-				if (invalid) { return; }
-				fmt::print("{}@{}{}", node.base().name, node.name, id.val);
-				g.outputSockets(id, [](const Socket&, const NodeId& socketId) {
-					fmt::print("[{}]", socketId.val);
-				});
-				fmt::println(";");
-			},
-			NodeIterOrder::Topological, id);
-	}
+	PushID(PLAY_BUTTON_ID(nodeId));
+	if (ArrowButton("", ImGuiDir_Right)) { play(id); }
+	PopID();
+
 	PopStyleColor(4);
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
 
-	const auto& ins = node.input();
-	const auto& outs = node.output();
-	for (auto i = 0u; i < std::max(ins.size(), outs.size()); ++i) {
-		if (i < ins.size()) {
-			ed::BeginPin(node.inputSocketIds[i].val, ed::PinKind::Input);
-			AlignedText(ins[i].name);
-			pins.emplace_back(
-				GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0),
-				IM_COL(255, 0, 0));
-			ed::PinRect(
-				pins.back().first - ImVec2(pinRadius, pinRadius),
-				pins.back().first + ImVec2(pinRadius, pinRadius));
-			ed::EndPin();
+#define DRAW_INPUT_SOCKET(SOCKET, ID)                             \
+	ed::BeginPin((ID), ed::PinKind::Input);                       \
+	AlignedText((SOCKET).name, &maxTextWidth);                    \
+	pins.emplace_back(                                            \
+		GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0), \
+		IM_COL(255, 0, 0));                                       \
+	ed::PinRect(                                                  \
+		pins.back().first - ImVec2(pinRadius, pinRadius),         \
+		pins.back().first + ImVec2(pinRadius, pinRadius));        \
+	ed::EndPin();
+
+#define DRAW_OUTPUT_SOCKET(SOCKET, ID)                            \
+	ed::BeginPin((ID), ed::PinKind::Output);                      \
+	AlignedText((SOCKET).name, ImGui::AlignRight, &maxTextWidth); \
+	pins.emplace_back(                                            \
+		GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0), \
+		IM_COL(0, 255, 0));                                       \
+	ed::PinRect(                                                  \
+		pins.back().first - ImVec2(pinRadius, pinRadius),         \
+		pins.back().first + ImVec2(pinRadius, pinRadius));        \
+	ed::EndPin();
+
+	// Both
+	{
+		int count = 0;
+		for (const auto& [in, inID, out, outID] : std::views::zip(
+				 node.input(), node.inputSocketIds, node.output(),
+				 node.outputSocketIds)) {
+			DRAW_INPUT_SOCKET(in, inID.val);
+			ImGui::SameLine();
+			DRAW_OUTPUT_SOCKET(out, outID.val);
+			count++;
 		}
-		if (i < outs.size()) {
-			if (i < ins.size()) { ImGui::SameLine(); }
-			ed::BeginPin(node.outputSocketIds[i].val, ed::PinKind::Output);
-			ImGui::AlignedText(outs[i].name, ImGui::AlignRight);
-			pins.emplace_back(
-				GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0),
-				IM_COL(0, 255, 0));
-			ed::PinRect(
-				pins.back().first - ImVec2(pinRadius, pinRadius),
-				pins.back().first + ImVec2(pinRadius, pinRadius));
-			ed::EndPin();
+		// Only input
+		for (const auto& [in, inID] :
+			 std::views::zip(node.input(), node.inputSocketIds) |
+				 std::views::drop(count)) {
+			DRAW_INPUT_SOCKET(in, inID.val);
+		}
+		// Only output
+		for (const auto& [out, outID] :
+			 std::views::zip(node.output(), node.outputSocketIds) |
+				 std::views::drop(count)) {
+			DRAW_OUTPUT_SOCKET(out, outID.val);
 		}
 	}
+
+	PushID(OPT_ID(nodeId));
+	{
+		auto x = GetCursorPosX();
+		auto y = GetCursorPosY();
+		for (auto& [optName, optValue] : node.option) {
+			AlignedText(optName, &maxTextWidth);
+			ImGui::SameLine();
+			x = std::max(x, GetCursorPosX());
+			ImGui::NewLine();
+		}
+		SetCursorPosY(y);
+		for (auto& [optName, optValue] : node.option) {
+			SetCursorPosX(x);
+			PushItemWidth(std::max(GetRemainingWidth(), maxTextWidth));
+			PushID(optName.data());
+			ImGui::InputText("", &optValue);
+			PopID();
+			PopItemWidth();
+		}
+	}
+	PopID();
+
+	PushID(OPT_BUTTON_ID(nodeId));
+	{
+		if (ImGui::Button("+")) {
+			popup = POPUP_ADD_OPT;
+			activeNode = id;
+		}
+	}
+	PopID();
 
 	PopRightEdge();
 	ed::EndNode();
@@ -125,11 +198,12 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	for (auto& pin : pins) {
 		list->AddCircleFilled(pin.first, pinRadius, pin.second);
 	}
+}
 
-	ed::Suspend();
-	if (popup != nullptr) {
-		ImGui::OpenPopup(popup);
-		popup = nullptr;
+void NodeEditor::popups() {
+	if (popup.size() > 0) {
+		ImGui::OpenPopup(popup.data());
+		popup = {};
 	}
 	if (ImGui::BeginPopupModal(
 			POPUP_MISSING_INPUT, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -137,7 +211,31 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 		if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
 		ImGui::EndPopup();
 	}
-	ed::Resume();
+	if (ImGui::BeginPopup(POPUP_ADD_OPT)) {
+		if (searchStarted) {
+			searchStarted = false;
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		searchFilter.Draw(" ");
+		auto& node = g.getNode(activeNode);
+		for (auto& opt : node.base().options) {
+			if (contains(node.option, opt.name)) { continue; }
+			if (searchFilter.PassFilter(opt.name.c_str()) ||
+				searchFilter.PassFilter(opt.desc.c_str())) {
+				if (ImGui::Selectable(opt.name.c_str())) {
+					node.option[opt.name] = opt.defaultValue;
+					searchFilter.Clear();
+					CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				ImGui::Text("- %s", opt.desc.c_str());
+			}
+		}
+		ImGui::EndPopup();
+	} else {
+		activeNode = INVALID_NODE;
+	}
 }
 
 void NodeEditor::searchBar() {
@@ -159,7 +257,10 @@ void NodeEditor::searchBar() {
 				if (ImGui::Selectable(f.name.c_str())) {
 					addNode(f);
 					searchFilter.Clear();
+					CloseCurrentPopup();
 				}
+				ImGui::SameLine();
+				ImGui::Text("- %s", f.desc.c_str());
 				if (count++ == 5) { break; }
 			}
 		}
@@ -172,9 +273,8 @@ void NodeEditor::draw() {
 	ed::SetCurrentEditor(context);
 	ed::Begin(g.getName().c_str());
 
-	g.iterateNodes([this](const FilterNode& node, const NodeId& id) {
-		drawNode(node, id);
-	});
+	g.iterateNodes(
+		[this](FilterNode& node, const NodeId& id) { drawNode(node, id); });
 
 	g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
 		ed::Link(id.val, s.val, d.val);
@@ -202,7 +302,6 @@ void NodeEditor::draw() {
 			if (inputPinId && outputPinId) {
 				auto pin1 = inputPinId.Get();
 				auto pin2 = outputPinId.Get();
-				fmt::println("{}->{}", pin1, pin2);
 				if (g.canAddLink({pin1}, {pin2})) {
 					// ed::AcceptNewItem() return true when user release
 					// mouse button.
@@ -249,6 +348,7 @@ void NodeEditor::draw() {
 	ed::SetCurrentEditor(nullptr);
 
 	searchBar();
+	popups();
 
 	ImGui::End();
 }
