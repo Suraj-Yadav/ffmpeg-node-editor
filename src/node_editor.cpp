@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/spdlog.h>
@@ -9,8 +10,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <functional>
 #include <iostream>
+#include <memory>
+#include <nlohmann/json.hpp>
 #include <ostream>
 #include <ranges>
 #include <set>
@@ -28,13 +32,24 @@
 using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
-NodeEditor::NodeEditor(Profile* p) : profile(p), popup("") {
+NodeEditor::NodeEditor(const Profile* p, const std::string& n)
+	: profile(p), popup(""), name(n) {
 	ed::Config config;
 	config.SettingsFile = nullptr;
-	context = ed::CreateEditor(&config);
+	context = std::shared_ptr<ed::EditorContext>(
+		ed::CreateEditor(&config), ed::DestroyEditor);
 }
 
-NodeEditor::~NodeEditor() { ed::DestroyEditor(context); }
+NodeEditor::NodeEditor(
+	FilterGraph& g, const std::string& n = "Untitled", const Profile* p)
+	: g(g), profile(p), popup(""), name(n) {
+	ed::Config config;
+	config.SettingsFile = nullptr;
+	context = std::shared_ptr<ed::EditorContext>(
+		ed::CreateEditor(&config), ed::DestroyEditor);
+}
+
+NodeEditor::~NodeEditor() {}
 
 const auto POPUP_MISSING_INPUT = "Missing Input";
 const auto POPUP_ADD_OPT = "Select Option";
@@ -73,10 +88,12 @@ void NodeEditor::play(const NodeId& id) {
 			if (!node.option.empty()) {
 				buff.push_back('=');
 				bool first = true;
-				for (const auto& [name, value] : node.option) {
+				const auto& options = node.base().options;
+				for (const auto& [optId, value] : node.option) {
 					if (!first) { buff.push_back(':'); }
 					fmt::format_to(
-						std::back_inserter(buff), "{}={}", name.data(), value);
+						std::back_inserter(buff), "{}={}",
+						options[optId].name.data(), value);
 					first = false;
 				}
 			}
@@ -95,7 +112,7 @@ void NodeEditor::play(const NodeId& id) {
 	}
 }
 
-void NodeEditor::drawNode(FilterNode& node, const NodeId& id) {
+void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	const auto nodeId = id.val;
 	auto maxTextWidth = 0.0f;
 	ed::BeginNode(nodeId);
@@ -110,19 +127,16 @@ void NodeEditor::drawNode(FilterNode& node, const NodeId& id) {
 
 	PushRightEdge(nSize.x - lPad - rPad - 2 * borderW);
 
-	AlignedText(node.name, TextAlign::AlignCenter, &maxTextWidth);
-	SameLine();
-
 	PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
 	PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
 	PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
 	PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
-
 	PushID(PLAY_BUTTON_ID(nodeId));
 	if (ArrowButton("", ImGuiDir_Right)) { play(id); }
 	PopID();
-
 	PopStyleColor(4);
+	SameLine();
+	AlignedText(node.name, TextAlign::AlignCenter, &maxTextWidth);
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
 
@@ -148,61 +162,68 @@ void NodeEditor::drawNode(FilterNode& node, const NodeId& id) {
 		pins.back().first + ImVec2(pinRadius, pinRadius));        \
 	ed::EndPin();
 
-	// Both
 	{
-		int count = 0;
+		// Both
 		for (const auto& [in, inID, out, outID] : std::views::zip(
 				 node.input(), node.inputSocketIds, node.output(),
 				 node.outputSocketIds)) {
 			DRAW_INPUT_SOCKET(in, inID.val);
 			ImGui::SameLine();
 			DRAW_OUTPUT_SOCKET(out, outID.val);
-			count++;
 		}
+		const auto commonCnt =
+			std::min(node.input().size(), node.output().size());
 		// Only input
 		for (const auto& [in, inID] :
 			 std::views::zip(node.input(), node.inputSocketIds) |
-				 std::views::drop(count)) {
+				 std::views::drop(commonCnt)) {
 			DRAW_INPUT_SOCKET(in, inID.val);
 		}
 		// Only output
 		for (const auto& [out, outID] :
 			 std::views::zip(node.output(), node.outputSocketIds) |
-				 std::views::drop(count)) {
+				 std::views::drop(commonCnt)) {
 			DRAW_OUTPUT_SOCKET(out, outID.val);
 		}
 	}
 
-	PushID(OPT_ID(nodeId));
-	{
-		auto x = GetCursorPosX();
-		auto y = GetCursorPosY();
-		for (auto& [optName, optValue] : node.option) {
-			AlignedText(optName, &maxTextWidth);
-			ImGui::SameLine();
-			x = std::max(x, GetCursorPosX());
-			ImGui::NewLine();
+	if (node.option.size() > 0) {
+		PushID(OPT_ID(nodeId));
+		{
+			const auto& options = node.base().options;
+			for (const auto& [idx, _] : node.option) {
+				maxTextWidth = std::max(
+					maxTextWidth,
+					ImGui::CalcTextSize(options[idx].name.c_str()).x);
+			}
+			for (auto& [optIdx, optValue] : g.getNode(id).option) {
+				AlignedText(options[optIdx].name, &maxTextWidth);
+				ed::Suspend();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+					ImGui::SetTooltip("%s", options[optIdx].desc.data());
+				}
+				ed::Resume();
+				SameLine(maxTextWidth);
+				PushItemWidth(maxTextWidth);
+				PushID(optIdx);
+				ImGui::InputText("", &optValue);
+				PopID();
+				PopItemWidth();
+			}
 		}
-		SetCursorPosY(y);
-		for (auto& [optName, optValue] : node.option) {
-			SetCursorPosX(x);
-			PushItemWidth(std::max(GetRemainingWidth(), maxTextWidth));
-			PushID(optName.data());
-			ImGui::InputText("", &optValue);
-			PopID();
-			PopItemWidth();
-		}
+		PopID();
 	}
-	PopID();
 
-	PushID(OPT_BUTTON_ID(nodeId));
-	{
-		if (ImGui::Button("+")) {
-			popup = POPUP_ADD_OPT;
-			activeNode = id;
+	if (node.option.size() < node.base().options.size()) {
+		PushID(OPT_BUTTON_ID(nodeId));
+		{
+			if (ImGui::Button("+")) {
+				popup = POPUP_ADD_OPT;
+				activeNode = id;
+			}
 		}
+		PopID();
 	}
-	PopID();
 
 	PopRightEdge();
 	ed::EndNode();
@@ -238,12 +259,14 @@ void NodeEditor::popups() {
 
 		searchFilter.Draw(" ");
 		auto& node = g.getNode(activeNode);
-		for (auto& opt : node.base().options) {
-			if (contains(node.option, opt.name)) { continue; }
+		for (const auto& [index, opt] :
+			 std::views::enumerate(node.base().options)) {
+			const auto idx = int(index);
+			if (contains(node.option, idx)) { continue; }
 			if (searchFilter.PassFilter(opt.name.c_str()) ||
 				searchFilter.PassFilter(opt.desc.c_str())) {
 				if (ImGui::Selectable(opt.name.c_str())) {
-					node.option[opt.name] = opt.defaultValue;
+					node.option[idx] = opt.defaultValue;
 					searchFilter.Clear();
 					CloseCurrentPopup();
 				}
@@ -288,86 +311,157 @@ void NodeEditor::searchBar() {
 }
 
 void NodeEditor::draw() {
-	ImGui::Begin(g.getName().c_str());
-	ed::SetCurrentEditor(context);
-	ed::Begin(g.getName().c_str());
+	if (ImGui::Begin(name.c_str())) {
+		ed::SetCurrentEditor(context.get());
+		ed::Begin(name.c_str());
 
-	g.iterateNodes(
-		[this](FilterNode& node, const NodeId& id) { drawNode(node, id); });
+		g.iterateNodes([this](const FilterNode& node, const NodeId& id) {
+			drawNode(node, id);
+		});
 
-	g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
-		ed::Link(id.val, s.val, d.val);
-	});
+		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
+			ed::Link(id.val, s.val, d.val);
+		});
 
-	if (ed::BeginCreate()) {
-		ed::PinId inputPinId, outputPinId;
-		if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
-			// QueryNewLink returns true if editor want to create new
-			// link between pins.
-			//
-			// Link can be created only for two valid pins, it is up to
-			// you to validate if connection make sense. Editor is happy
-			// to make any.
-			//
-			// Link always goes from input to output. User may choose to
-			// drag link from output pin or input pin. This determine
-			// which pin ids are valid and which are not:
-			//   * input valid, output invalid - user started to drag
-			//   new ling from input pin
-			//   * input invalid, output valid - user started to drag
-			//   new ling from output pin
-			//   * input valid, output valid   - user dragged link over
-			//   other pin, can be validated
-			if (inputPinId && outputPinId) {
-				auto pin1 = inputPinId.Get();
-				auto pin2 = outputPinId.Get();
-				if (g.canAddLink({pin1}, {pin2})) {
-					// ed::AcceptNewItem() return true when user release
-					// mouse button.
-					if (ed::AcceptNewItem()) {
-						const auto& linkId = g.addLink({pin1}, {pin2});
-						if (linkId != INVALID_LINK) {
-							ed::Link(linkId.val, pin1, pin2);
+		if (ed::BeginCreate()) {
+			ed::PinId inputPinId, outputPinId;
+			if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
+				// QueryNewLink returns true if editor want to create new
+				// link between pins.
+				//
+				// Link can be created only for two valid pins, it is up to
+				// you to validate if connection make sense. Editor is happy
+				// to make any.
+				//
+				// Link always goes from input to output. User may choose to
+				// drag link from output pin or input pin. This determine
+				// which pin ids are valid and which are not:
+				//   * input valid, output invalid - user started to drag
+				//   new ling from input pin
+				//   * input invalid, output valid - user started to drag
+				//   new ling from output pin
+				//   * input valid, output valid   - user dragged link over
+				//   other pin, can be validated
+				if (inputPinId && outputPinId) {
+					auto pin1 = inputPinId.Get();
+					auto pin2 = outputPinId.Get();
+					if (g.canAddLink({pin1}, {pin2})) {
+						// ed::AcceptNewItem() return true when user release
+						// mouse button.
+						if (ed::AcceptNewItem()) {
+							const auto& linkId = g.addLink({pin1}, {pin2});
+							if (linkId != INVALID_LINK) {
+								ed::Link(linkId.val, pin1, pin2);
+							}
 						}
+					} else {
+						// You may choose to reject connection between these
+						// nodes by calling ed::RejectNewItem(). This will
+						// allow editor to give visual feedback by changing
+						// link thickness and color.
+						ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
 					}
-				} else {
-					// You may choose to reject connection between these
-					// nodes by calling ed::RejectNewItem(). This will
-					// allow editor to give visual feedback by changing
-					// link thickness and color.
-					ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
 				}
 			}
 		}
-	}
-	ed::EndCreate();  // Wraps up object creation action handling.
+		ed::EndCreate();  // Wraps up object creation action handling.
 
-	// Handle deletion action
-	if (ed::BeginDelete()) {
-		// There may be many links marked for deletion, let's loop over
-		// them.
-		ed::LinkId deletedLinkId;
-		while (ed::QueryDeletedLink(&deletedLinkId)) {
-			// If you agree that link can be deleted, accept deletion.
-			if (ed::AcceptDeletedItem()) {
-				// Then remove link from your data.
-				g.deleteLink(LinkId{deletedLinkId.Get()});
+		// Handle deletion action
+		if (ed::BeginDelete()) {
+			// There may be many links marked for deletion, let's loop over
+			// them.
+			ed::LinkId deletedLinkId;
+			while (ed::QueryDeletedLink(&deletedLinkId)) {
+				// If you agree that link can be deleted, accept deletion.
+				if (ed::AcceptDeletedItem()) {
+					// Then remove link from your data.
+					g.deleteLink(LinkId{deletedLinkId.Get()});
+				}
+			}
+			ed::NodeId deletedNodeId;
+			while (ed::QueryDeletedNode(&deletedNodeId)) {
+				if (ed::AcceptDeletedItem(false)) {
+					g.deleteNode(NodeId{deletedNodeId.Get()});
+				}
 			}
 		}
-		ed::NodeId deletedNodeId;
-		while (ed::QueryDeletedNode(&deletedNodeId)) {
-			if (ed::AcceptDeletedItem(false)) {
-				g.deleteNode(NodeId{deletedNodeId.Get()});
-			}
-		}
+		ed::EndDelete();  // Wrap up deletion action
+
+		ed::End();
+		ed::SetCurrentEditor(nullptr);
+
+		searchBar();
+		popups();
 	}
-	ed::EndDelete();  // Wrap up deletion action
-
-	ed::End();
-	ed::SetCurrentEditor(nullptr);
-
-	searchBar();
-	popups();
-
 	ImGui::End();
+}
+
+void to_json(nlohmann::json& j, const NodeId& id) { j = id.val; }
+
+bool NodeEditor::save(const std::filesystem::path& path) const {
+	nlohmann::json obj;
+	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
+		nlohmann::json elem;
+		elem["id"] = id;
+		elem["name"] = node.base().name;
+		const auto& options = node.base().options;
+		for (auto& [optIdx, optValue] : node.option) {
+			nlohmann::json opt;
+			opt["key"] = options[optIdx].name;
+			opt["value"] = optValue;
+			elem["option"].push_back(opt);
+		}
+		elem["inputs"] = node.inputSocketIds;
+		elem["outputs"] = node.outputSocketIds;
+		g.inputSockets(
+			id, [&](const Socket&, const NodeId& dest, const NodeId& src) {
+				elem["edges"].push_back({{"src", src}, {"dest", dest}});
+			});
+		obj["nodes"].push_back(elem);
+	});
+	std::ofstream o(path, std::ios_base::binary);
+	o << std::setw(4) << obj;
+	return true;
+}
+
+bool load(
+	const std::filesystem::path& path, const Profile& profile,
+	std::vector<NodeEditor>& editors) {
+	nlohmann::json json;
+	try {
+		json = nlohmann::json::parse(std::ifstream(path));
+	} catch (nlohmann::json::exception&) { return false; }
+	FilterGraph g;
+	std::map<int, NodeId> mapping;
+	for (const auto& elem : json["nodes"]) {
+		auto id = elem["id"].template get<int>();
+		auto name = elem["name"].template get<std::string>();
+		const auto& base = std::find_if(
+			profile.filters.begin(), profile.filters.end(),
+			[&](const Filter& filter) { return filter.name == name; });
+		auto nId = g.addNode(*base);
+		mapping[id] = nId;
+		for (const auto& [sNid, sId] : std::views::zip(
+				 g.getNode(nId).inputSocketIds,
+				 elem["inputs"].template get<std::vector<int>>())) {
+			mapping[sId] = sNid;
+		}
+		for (const auto& [sNid, sId] : std::views::zip(
+				 g.getNode(nId).outputSocketIds,
+				 elem["outputs"].template get<std::vector<int>>())) {
+			mapping[sId] = sNid;
+		}
+		if (elem.find("edges") != elem.end()) {
+			for (const auto& edge : elem["edges"]) {
+				const auto& src = edge["src"].template get<int>();
+				const auto& dest = edge["dest"].template get<int>();
+				g.addLink(mapping[src], mapping[dest]);
+			}
+		}
+	}
+	editors.emplace_back(g, path.filename().string(), &profile);
+	NodeEditor e;
+	// editors.
+	// std::swap(*this, g);
+	return true;
 }

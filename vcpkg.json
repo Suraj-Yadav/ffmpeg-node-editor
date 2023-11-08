@@ -12,6 +12,7 @@
             ]
         },
         "imgui-node-editor",
+        "nativefiledialog",
         "nlohmann-json",
         "re2",
         "spdlog",

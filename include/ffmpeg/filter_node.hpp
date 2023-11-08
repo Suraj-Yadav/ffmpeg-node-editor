@@ -1,6 +1,4 @@
 #pragma once
-#include <absl/strings/string_view.h>
-#include <vcruntime.h>
 
 #include <map>
 #include <vector>
@@ -27,7 +25,7 @@ class FilterNode {
 
    public:
 	std::string name;
-	std::map<absl::string_view, std::string> option;
+	std::map<int, std::string> option;
 	std::vector<NodeId> inputSocketIds;
 	std::vector<NodeId> outputSocketIds;
 

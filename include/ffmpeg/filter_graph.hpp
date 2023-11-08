@@ -11,6 +11,7 @@
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
+#include "ffmpeg/profile.hpp"
 #include "filter_node.hpp"
 
 enum NodeIterOrder { Default, Topological };
@@ -18,7 +19,8 @@ enum NodeIterOrder { Default, Topological };
 using EdgeIterCallback =
 	std::function<void(const LinkId& id, const NodeId& u, const NodeId& v)>;
 
-using NodeIterCallback = std::function<void(FilterNode&, const NodeId& id)>;
+using NodeIterCallback =
+	std::function<void(const FilterNode&, const NodeId& id)>;
 
 using InputSocketCallback = std::function<void(
 	const Socket&, const NodeId& id, const NodeId& parentId)>;
@@ -38,30 +40,26 @@ struct GraphState {
 
 class FilterGraph {
 	std::vector<FilterNode> nodes;
-
 	GraphState state;
 
-	std::string name;
-
    public:
-	FilterGraph(const std::string& n = "Untitled") : name(n) {}
+	FilterGraph() {}
 
-	void addNode(const Filter& filter);
+	const NodeId addNode(const Filter& filter);
 	void deleteNode(NodeId id);
 	void deleteLink(LinkId id);
-	bool canAddLink(NodeId u, NodeId v);
+	bool canAddLink(NodeId u, NodeId v) const;
 	const LinkId addLink(NodeId u, NodeId v);
 
 	void iterateNodes(
 		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default,
-		NodeId u = INVALID_NODE);
+		NodeId u = INVALID_NODE) const;
 
-	void iterateLinks(EdgeIterCallback cb);
+	void iterateLinks(EdgeIterCallback cb) const;
 
-	void inputSockets(NodeId u, InputSocketCallback cb);
-	void outputSockets(NodeId u, OutputSocketCallback cb);
+	void inputSockets(NodeId u, InputSocketCallback cb) const;
+	void outputSockets(NodeId u, OutputSocketCallback cb) const;
 
-	inline const std::string& getName() const { return name; }
 	const FilterNode& getNode(NodeId id) const;
 	FilterNode& getNode(NodeId id);
 };

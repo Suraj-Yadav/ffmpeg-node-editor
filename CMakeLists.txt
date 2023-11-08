@@ -14,6 +14,7 @@ find_package(re2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
+find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
 add_executable(ffmpeg_node_editor 
     src/backend.cpp
@@ -37,4 +38,5 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     spdlog::spdlog
     tiny-process-library::tiny-process-library 
     unofficial::imgui-node-editor::imgui-node-editor 
+    unofficial::nativefiledialog::nfd
 )

@@ -1,9 +1,11 @@
 #include "ffmpeg/filter_graph.hpp"
 
 #include <fmt/core.h>
+#include <spdlog/spdlog.h>
 #include <vcruntime.h>
 
 #include <algorithm>
+#include <iostream>
 #include <iterator>
 #include <limits>
 #include <ranges>
@@ -12,6 +14,7 @@
 
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_node.hpp"
+#include "ffmpeg/profile.hpp"
 #include "util.hpp"
 
 const int LINK_ID_SHIFT = std::numeric_limits<IdBaseType>::digits / 2;
@@ -60,7 +63,7 @@ IdBaseType addVertex(
 }
 
 bool canAddEdge(
-	GraphState& state, const std::vector<FilterNode>& nodes, IdBaseType u,
+	const GraphState& state, const std::vector<FilterNode>& nodes, IdBaseType u,
 	IdBaseType v) {
 	Socket us, vs;
 	if (state.vertIdToNodeIndex[u] == state.vertIdToNodeIndex[v]) {
@@ -89,7 +92,7 @@ void deleteEdge(GraphState& state, IdBaseType u, IdBaseType v) {
 
 void deleteVertex(GraphState& state, IdBaseType u) { state.valid[u] = false; }
 
-void FilterGraph::addNode(const Filter& filter) {
+const NodeId FilterGraph::addNode(const Filter& filter) {
 	auto nodeIndex = nodes.size();
 	nodes.emplace_back(filter);
 
@@ -105,6 +108,7 @@ void FilterGraph::addNode(const Filter& filter) {
 		addEdge(state, nodeVertexId, oVertexId);
 		nodes.back().outputSocketIds.push_back(getNodeId(oVertexId));
 	}
+	return getNodeId(nodeVertexId);
 }
 
 const LinkId FilterGraph::addLink(NodeId uu, NodeId vv) {
@@ -123,12 +127,12 @@ void FilterGraph::deleteLink(LinkId id) {
 	deleteEdge(state, u, v);
 }
 
-bool FilterGraph::canAddLink(NodeId uu, NodeId vv) {
+bool FilterGraph::canAddLink(NodeId uu, NodeId vv) const {
 	auto u = getU(uu), v = getU(vv);
 	return canAddEdge(state, nodes, u, v);
 }
 
-void FilterGraph::iterateLinks(EdgeIterCallback cb) {
+void FilterGraph::iterateLinks(EdgeIterCallback cb) const {
 	for (IdBaseType v = 0; v < state.revAdjList.size(); ++v) {
 		for (auto& u : state.revAdjList[v]) {
 			if (state.isSocket[u] && state.isSocket[v]) {
@@ -140,7 +144,7 @@ void FilterGraph::iterateLinks(EdgeIterCallback cb) {
 
 void dfs(
 	const GraphState& state, std::vector<bool>& marked,
-	std::vector<FilterNode>& nodes, IdBaseType v, NodeIterCallback cb) {
+	const std::vector<FilterNode>& nodes, IdBaseType v, NodeIterCallback cb) {
 	marked[v] = true;
 	if (!state.valid[v]) { return; }
 	for (auto& u : state.revAdjList[v]) {
@@ -152,7 +156,7 @@ void dfs(
 }
 
 void FilterGraph::iterateNodes(
-	NodeIterCallback cb, NodeIterOrder order, NodeId u) {
+	NodeIterCallback cb, NodeIterOrder order, NodeId u) const {
 	if (order == NodeIterOrder::Default) {
 		for (auto i = 0u; i < state.revAdjList.size(); ++i) {
 			if (state.valid[i] && !state.isSocket[i]) {
@@ -175,7 +179,7 @@ void FilterGraph::iterateNodes(
 	}
 }
 
-void FilterGraph::inputSockets(NodeId uu, InputSocketCallback cb) {
+void FilterGraph::inputSockets(NodeId uu, InputSocketCallback cb) const {
 	auto u = getU(uu);
 	if (state.isSocket[u]) { return; }
 	const auto& node = nodes[state.vertIdToNodeIndex[u]];
@@ -190,7 +194,7 @@ void FilterGraph::inputSockets(NodeId uu, InputSocketCallback cb) {
 		}
 	}
 }
-void FilterGraph::outputSockets(NodeId uu, OutputSocketCallback cb) {
+void FilterGraph::outputSockets(NodeId uu, OutputSocketCallback cb) const {
 	auto u = getU(uu);
 	if (state.isSocket[u]) { return; }
 	const auto& node = nodes[state.vertIdToNodeIndex[u]];

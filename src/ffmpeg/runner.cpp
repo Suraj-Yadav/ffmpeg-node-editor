@@ -49,7 +49,7 @@ int Runner::lineScanner(
 }
 
 int Runner::play(
-	absl::string_view filter, const std::vector<std::string>& outputs) {
+	absl::string_view filter, const std::vector<std::string>& outputs) const {
 	TinyProcessLib::Process process2(
 		std::vector<std::string>{"mpvnet", "-"}, "", nullptr, nullptr, true);
 	bool first = true;
