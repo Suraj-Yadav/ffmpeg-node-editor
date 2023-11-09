@@ -40,69 +40,25 @@ int main() {
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	std::vector<NodeEditor> editors;
-
-	// NodeEditor editor(&profile);
-	namespace ed = ax::NodeEditor;
-
-	ed::Config config;
-	config.SettingsFile = nullptr;
-	auto m_Context = ed::CreateEditor(&config);
-	ed::Config config2;
-	config2.SettingsFile = nullptr;
-	auto m_Context2 = ed::CreateEditor(&config2);
+	int untitledCount = 0;
 
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
-		// ImGui::Begin("asd1");
-		// ed::SetCurrentEditor(m_Context);
-		// ed::Begin("My Editor");
-		// int uniqueId = 1;
-		// // Start drawing nodes.
-		// ed::BeginNode(uniqueId++);
-		// ImGui::Text("Node A");
-		// ed::BeginPin(uniqueId++, ed::PinKind::Input);
-		// ImGui::Text("-> In");
-		// ed::EndPin();
-		// ImGui::SameLine();
-		// ed::BeginPin(uniqueId++, ed::PinKind::Output);
-		// ImGui::Text("Out ->");
-		// ed::EndPin();
-		// ed::EndNode();
-		// ed::End();
-		// ed::SetCurrentEditor(nullptr);
-		// ImGui::End();
-
-		// ImGui::Begin("asd");
-		// ed::SetCurrentEditor(m_Context2);
-		// ed::Begin("My Editor");
-		// uniqueId = 1;
-		// // Start drawing nodes.
-		// ed::BeginNode(uniqueId++);
-		// ImGui::Text("Node B");
-		// ed::BeginPin(uniqueId++, ed::PinKind::Input);
-		// ImGui::Text("-> In");
-		// ed::EndPin();
-		// ImGui::SameLine();
-		// ed::BeginPin(uniqueId++, ed::PinKind::Output);
-		// ImGui::Text("Out ->");
-		// ed::EndPin();
-		// ed::EndNode();
-		// ed::End();
-		// ed::SetCurrentEditor(nullptr);
-		// ImGui::End();
-
 		// Menu Bar
 		if (ImGui::BeginMainMenuBar()) {
 			if (ImGui::BeginMenu("File")) {
 				if (ImGui::MenuItem("New", "CTRL+N")) {
-					editors.emplace_back(&profile);
+					editors.emplace_back(
+						&profile, fmt::format("Untitled {}", untitledCount++));
 				}
 				if (ImGui::MenuItem("Open..", "CTRL+O")) {
 					nfdchar_t* outPath = NULL;
 					nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
-
 					if (result == NFD_OKAY) {
-						load(outPath, profile, editors);
+						NodeEditor e(
+							&profile,
+							fmt::format("Untitled {}", untitledCount));
+						if (e.load(outPath)) { editors.push_back(e); }
 						free(outPath);
 					} else if (result == NFD_CANCEL) {
 						spdlog::info("User pressed cancel");

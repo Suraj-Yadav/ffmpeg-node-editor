@@ -30,18 +30,16 @@ class NodeEditor {
 	void popups();
 
 	std::string name;
+	std::filesystem::path path;
 
    public:
-	NodeEditor(const Profile* p = nullptr, const std::string& n = "Untitled");
-	NodeEditor(
-		FilterGraph& g, const std::string& n, const Profile* p = nullptr);
+	NodeEditor(const Profile* p, const std::string& n);
 	~NodeEditor();
+	const std::string getName() const;
+	const std::filesystem::path& getPath() const;
 	void draw();
 	void addNode(const Filter& filter) { g.addNode(filter); }
 	void play(const NodeId& id = INVALID_NODE);
 	bool save(const std::filesystem::path& path) const;
+	bool load(const std::filesystem::path& path);
 };
-
-bool load(
-	const std::filesystem::path& path, const Profile& profile,
-	std::vector<NodeEditor>& editors);

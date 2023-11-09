@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -34,15 +35,6 @@ namespace ed = ax::NodeEditor;
 
 NodeEditor::NodeEditor(const Profile* p, const std::string& n)
 	: profile(p), popup(""), name(n) {
-	ed::Config config;
-	config.SettingsFile = nullptr;
-	context = std::shared_ptr<ed::EditorContext>(
-		ed::CreateEditor(&config), ed::DestroyEditor);
-}
-
-NodeEditor::NodeEditor(
-	FilterGraph& g, const std::string& n = "Untitled", const Profile* p)
-	: g(g), profile(p), popup(""), name(n) {
 	ed::Config config;
 	config.SettingsFile = nullptr;
 	context = std::shared_ptr<ed::EditorContext>(
@@ -282,7 +274,7 @@ void NodeEditor::popups() {
 
 void NodeEditor::searchBar() {
 	const auto POP_UP_ID = "add_node_popup";
-	if (!ImGui::IsPopupOpen(POP_UP_ID) &&
+	if (ImGui::IsWindowHovered() && !ImGui::IsPopupOpen(POP_UP_ID) &&
 		ImGui::IsKeyPressed(ImGuiKey_Space, false) && profile != nullptr) {
 		ImGui::OpenPopup(POP_UP_ID);
 		searchStarted = true;
@@ -311,9 +303,9 @@ void NodeEditor::searchBar() {
 }
 
 void NodeEditor::draw() {
-	if (ImGui::Begin(name.c_str())) {
+	if (ImGui::Begin(getName().c_str())) {
 		ed::SetCurrentEditor(context.get());
-		ed::Begin(name.c_str());
+		ed::Begin(getName().c_str());
 
 		g.iterateNodes([this](const FilterNode& node, const NodeId& id) {
 			drawNode(node, id);
@@ -424,20 +416,18 @@ bool NodeEditor::save(const std::filesystem::path& path) const {
 	return true;
 }
 
-bool load(
-	const std::filesystem::path& path, const Profile& profile,
-	std::vector<NodeEditor>& editors) {
+bool NodeEditor::load(const std::filesystem::path& path) {
 	nlohmann::json json;
 	try {
 		json = nlohmann::json::parse(std::ifstream(path));
 	} catch (nlohmann::json::exception&) { return false; }
-	FilterGraph g;
+	g = FilterGraph();
 	std::map<int, NodeId> mapping;
 	for (const auto& elem : json["nodes"]) {
 		auto id = elem["id"].template get<int>();
 		auto name = elem["name"].template get<std::string>();
 		const auto& base = std::find_if(
-			profile.filters.begin(), profile.filters.end(),
+			profile->filters.begin(), profile->filters.end(),
 			[&](const Filter& filter) { return filter.name == name; });
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;
@@ -459,9 +449,13 @@ bool load(
 			}
 		}
 	}
-	editors.emplace_back(g, path.filename().string(), &profile);
-	NodeEditor e;
-	// editors.
-	// std::swap(*this, g);
+	this->path = std::filesystem::absolute(path);
+	name = path.filename().string();
 	return true;
 }
+
+const std::string NodeEditor::getName() const {
+	if (!path.empty()) { return path.filename().string(); }
+	return name;
+}
+const std::filesystem::path& NodeEditor::getPath() const { return path; }

@@ -73,13 +73,27 @@ int Runner::play(
 
 	auto status1 = 0, status2 = 0;
 	auto f = std::async([&]() {
+		spdlog::info("waiting for player process");
 		status2 = process2.get_exit_status();
-		process1.kill();
+		spdlog::info("player process exited with status {}", status2);
+		if (!process1.try_get_exit_status(status1)) {
+			process1.kill(true);
+			spdlog::info("killed ffmpeg process");
+		}
 	});
+	spdlog::info("waiting for ffmpeg process");
 	status1 = process1.get_exit_status();
-	process2.close_stdin();
-	if (status1 != 0) { process2.kill(); }
+	spdlog::info("ffmpeg process exited with status {}", status1);
+	if (!process2.try_get_exit_status(status2)) {
+		process2.close_stdin();
+		if (status1 != 0) {
+			process2.kill(true);
+			spdlog::info("killed player process");
+		}
+	}
+	spdlog::info("waiting for player process to finish");
 	f.wait();
+	spdlog::info("done waiting for player process");
 
 	return status1 + status2;
 }
