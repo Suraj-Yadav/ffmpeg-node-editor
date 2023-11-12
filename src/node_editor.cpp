@@ -1,5 +1,6 @@
 #include "node_editor.hpp"
 
+#include <absl/strings/string_view.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <imgui-node-editor/imgui_node_editor.h>
@@ -20,7 +21,9 @@
 #include <ranges>
 #include <set>
 #include <string>
+#include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "ffmpeg/filter_graph.hpp"
@@ -44,6 +47,7 @@ NodeEditor::NodeEditor(const Profile* p, const std::string& n)
 NodeEditor::~NodeEditor() {}
 
 const auto POPUP_MISSING_INPUT = "Missing Input";
+const auto POPUP_PLAY_ERROR = "Player Error";
 const auto POPUP_ADD_OPT = "Select Option";
 
 #define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
@@ -77,17 +81,19 @@ void NodeEditor::play(const NodeId& id) {
 			fmt::format_to(
 				std::back_inserter(buff), "{}@{}{}", node.base().name,
 				node.name, id.val);
-			if (!node.option.empty()) {
-				buff.push_back('=');
-				bool first = true;
-				const auto& options = node.base().options;
-				for (const auto& [optId, value] : node.option) {
-					if (!first) { buff.push_back(':'); }
-					fmt::format_to(
-						std::back_inserter(buff), "{}={}",
-						options[optId].name.data(), value);
-					first = false;
+
+			const auto& options = node.base().options;
+			for (const auto& [i, opt] : std::views::enumerate(node.option)) {
+				const auto& optId = opt.first;
+				const auto& optValue = opt.second;
+				if (i == 0) {
+					buff.push_back('=');
+				} else {
+					buff.push_back(':');
 				}
+				fmt::format_to(
+					std::back_inserter(buff), "{}={}",
+					options[optId].name.data(), optValue);
 			}
 			g.outputSockets(id, [&](const Socket&, const NodeId& socketId) {
 				outputs.insert(socketId.val);
@@ -100,7 +106,10 @@ void NodeEditor::play(const NodeId& id) {
 		std::vector<std::string> out;
 		for (auto& e : outputs) { out.push_back(std::format("[s{}]", e)); }
 		spdlog::info(fmt::to_string(buff));
-		profile->runner.play(fmt::to_string(buff), out);
+		int status = 0;
+		std::tie(status, popupString) =
+			profile->runner.play(fmt::to_string(buff), out);
+		if (status != 0) { popup = POPUP_PLAY_ERROR; }
 	}
 }
 
@@ -237,11 +246,13 @@ void NodeEditor::popups() {
 		ImGui::OpenPopup(popup.data());
 		popup = {};
 	}
-	if (ImGui::BeginPopupModal(
-			POPUP_MISSING_INPUT, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-		ImGui::Text("%s", popupString.c_str());
-		if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
-		ImGui::EndPopup();
+	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PLAY_ERROR}) {
+		if (ImGui::BeginPopupModal(
+				p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::Text("%s", popupString.c_str());
+			if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
+			ImGui::EndPopup();
+		}
 	}
 	if (ImGui::BeginPopup(POPUP_ADD_OPT)) {
 		if (searchStarted) {

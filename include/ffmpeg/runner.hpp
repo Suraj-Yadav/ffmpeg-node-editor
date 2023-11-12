@@ -17,6 +17,7 @@ class Runner {
 	int lineScanner(
 		std::vector<std::string> args, LineScannerCallback cb) const;
 
-	int play(absl::string_view filter, const std::vector<std::string>& outputs)
-		const;
+	std::pair<int, std::string> play(
+		absl::string_view filter,
+		const std::vector<std::string>& outputs) const;
 };

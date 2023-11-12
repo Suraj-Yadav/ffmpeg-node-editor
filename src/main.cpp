@@ -2,6 +2,8 @@
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -47,18 +49,27 @@ int main() {
 		// Menu Bar
 		if (ImGui::BeginMainMenuBar()) {
 			if (ImGui::BeginMenu("File")) {
+				auto possibleName = fmt::format("Untitled {}", untitledCount);
 				if (ImGui::MenuItem("New", "CTRL+N")) {
-					editors.emplace_back(
-						&profile, fmt::format("Untitled {}", untitledCount++));
+					editors.emplace_back(&profile, possibleName);
+					untitledCount++;
 				}
 				if (ImGui::MenuItem("Open..", "CTRL+O")) {
 					nfdchar_t* outPath = NULL;
 					nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
 					if (result == NFD_OKAY) {
-						NodeEditor e(
-							&profile,
-							fmt::format("Untitled {}", untitledCount));
-						if (e.load(outPath)) { editors.push_back(e); }
+						auto itr = std::find_if(
+							editors.begin(), editors.end(), [&](const auto& e) {
+								return std::filesystem::equivalent(
+									e.getPath(), outPath);
+							});
+						if (itr == editors.end()) {
+							NodeEditor e(&profile, possibleName);
+							if (e.load(outPath)) { editors.push_back(e); }
+
+						} else {
+							ImGui::SetWindowFocus(itr->getName().c_str());
+						}
 						free(outPath);
 					} else if (result == NFD_CANCEL) {
 						spdlog::info("User pressed cancel");
