@@ -62,5 +62,4 @@ namespace ImGui {
 		}
 		list->PathFillConvex(col);
 	}
-
 };	// namespace ImGui

@@ -1,96 +1,178 @@
 #include "ffmpeg/filter_graph.hpp"
 
-#include <fmt/core.h>
-#include <spdlog/spdlog.h>
-#include <vcruntime.h>
+#include <absl/strings/match.h>
 
-#include <algorithm>
-#include <iostream>
-#include <iterator>
-#include <limits>
-#include <ranges>
-#include <unordered_map>
-#include <vector>
-
-#include "ffmpeg/filter.hpp"
-#include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
+#include "ffmpeg/runner.hpp"
 #include "util.hpp"
 
 const int LINK_ID_SHIFT = std::numeric_limits<IdBaseType>::digits / 2;
 
-LinkId getLinkId(IdBaseType u, IdBaseType v) {
-	return {(u << LINK_ID_SHIFT) + v + 1};
-}
-
-void getUV(const LinkId& id, IdBaseType& u, IdBaseType& v) {
-	auto val = id.val - 1;
-	v = val & ((IdBaseType(1) << LINK_ID_SHIFT) - 1);
-	u = val >> LINK_ID_SHIFT;
-}
-
-NodeId getNodeId(const IdBaseType& u) { return {u + 1}; };
-IdBaseType getU(const NodeId& id) { return id.val - 1; }
-
-bool getSocket(
-	const GraphState& state, const std::vector<FilterNode>& nodes, IdBaseType u,
-	Socket& s) {
-	if (!state.valid[u]) { return false; }
-	if (!state.isSocket[u]) { return false; }
-
-	auto i = state.vertIdToNodeIndex[u];
-
-	if (state.isInput[u]) {
-		s = nodes[i].input()[state.vertIdToSocketIndex[u]];
-	} else {
-		s = nodes[i].output()[state.vertIdToSocketIndex[u]];
+namespace {
+	LinkId getLinkId(IdBaseType u, IdBaseType v) {
+		return {(u << LINK_ID_SHIFT) + v + 1};
 	}
-	return true;
-}
 
-IdBaseType addVertex(
-	GraphState& state, size_t nodeIndex, bool isSocket, size_t socketIndex,
-	bool isInput) {
-	auto id = state.revAdjList.size();
-	// state.adjList.emplace_back();
-	state.revAdjList.emplace_back(0);
-	state.vertIdToNodeIndex.emplace_back(nodeIndex);
-	state.valid.emplace_back(true);
-	state.isInput.emplace_back(isInput);
-	state.isSocket.emplace_back(isSocket);
-	state.vertIdToSocketIndex.emplace_back(socketIndex);
-	return id;
-}
-
-bool canAddEdge(
-	const GraphState& state, const std::vector<FilterNode>& nodes, IdBaseType u,
-	IdBaseType v) {
-	Socket us, vs;
-	if (state.vertIdToNodeIndex[u] == state.vertIdToNodeIndex[v]) {
-		return false;
+	void getUV(const LinkId& id, IdBaseType& u, IdBaseType& v) {
+		auto val = id.val - 1;
+		v = val & ((IdBaseType(1) << LINK_ID_SHIFT) - 1);
+		u = val >> LINK_ID_SHIFT;
 	}
-	if (!getSocket(state, nodes, u, us) || !getSocket(state, nodes, v, vs)) {
-		return false;
+
+	NodeId getNodeId(const IdBaseType& u) { return {u + 1}; };
+	IdBaseType getU(const NodeId& id) { return id.val - 1; }
+
+	bool getSocket(
+		const GraphState& state, const std::vector<FilterNode>& nodes,
+		IdBaseType u, Socket& s) {
+		if (!state.valid[u]) { return false; }
+		if (!state.isSocket[u]) { return false; }
+
+		auto i = state.vertIdToNodeIndex[u];
+
+		if (state.isInput[u]) {
+			s = nodes[i].input()[state.vertIdToSocketIndex[u]];
+		} else {
+			s = nodes[i].output()[state.vertIdToSocketIndex[u]];
+		}
+		return true;
 	}
-	if (state.isInput[u]) { std::swap(u, v); }
-	if (state.isInput[u] == state.isInput[v]) { return false; }
-	if (us.type != vs.type) { return false; }
-	if (state.revAdjList[v].size() > 0) { return false; }
-	const auto& adj = state.revAdjList[v];
-	return !contains(adj, u);
-}
 
-bool addEdge(GraphState& state, IdBaseType u, IdBaseType v) {
-	if (contains(state.revAdjList[v], u)) { return false; }
-	state.revAdjList[v].push_back(u);
-	return true;
-}
+	IdBaseType addVertex(
+		GraphState& state, size_t nodeIndex, bool isSocket, size_t socketIndex,
+		bool isInput) {
+		auto id = state.revAdjList.size();
+		// state.adjList.emplace_back();
+		state.revAdjList.emplace_back(0);
+		state.vertIdToNodeIndex.emplace_back(nodeIndex);
+		state.valid.emplace_back(true);
+		state.isInput.emplace_back(isInput);
+		state.isSocket.emplace_back(isSocket);
+		state.vertIdToSocketIndex.emplace_back(socketIndex);
+		return id;
+	}
 
-void deleteEdge(GraphState& state, IdBaseType u, IdBaseType v) {
-	std::erase(state.revAdjList[v], u);
-}
+	bool canAddEdge(
+		const GraphState& state, const std::vector<FilterNode>& nodes,
+		IdBaseType u, IdBaseType v) {
+		Socket us, vs;
+		if (state.vertIdToNodeIndex[u] == state.vertIdToNodeIndex[v]) {
+			return false;
+		}
+		if (!getSocket(state, nodes, u, us) ||
+			!getSocket(state, nodes, v, vs)) {
+			return false;
+		}
+		if (state.isInput[u]) { std::swap(u, v); }
+		if (state.isInput[u] == state.isInput[v]) { return false; }
+		if (us.type != vs.type) { return false; }
+		if (state.revAdjList[v].size() > 0) { return false; }
+		const auto& adj = state.revAdjList[v];
+		return !contains(adj, u);
+	}
 
-void deleteVertex(GraphState& state, IdBaseType u) { state.valid[u] = false; }
+	bool addEdge(GraphState& state, IdBaseType u, IdBaseType v) {
+		if (contains(state.revAdjList[v], u)) { return false; }
+		state.revAdjList[v].push_back(u);
+		return true;
+	}
+
+	void deleteEdge(GraphState& state, IdBaseType u, IdBaseType v) {
+		erase(state.revAdjList[v], u);
+	}
+
+	void deleteVertex(GraphState& state, IdBaseType u) {
+		state.valid[u] = false;
+	}
+	std::vector<Socket> getMediaInfo(const Runner& r, const std::string& path) {
+		std::vector<Socket> sockets;
+		bool inputStarted = false;
+		r.lineScanner(
+			{"-i", path},
+			[&](absl::string_view line) {
+				if (!inputStarted) {
+					inputStarted = absl::StartsWith(line, "Input #0");
+					return true;
+				}
+				if (absl::StartsWith(line, "  Stream #0")) {
+					if (absl::StrContains(line, "Video:")) {
+						sockets.push_back({"", SocketType::Video});
+					} else if (absl::StrContains(line, "Audio:")) {
+						sockets.push_back({"", SocketType::Audio});
+					} else if (absl::StrContains(line, "Subtitle:")) {
+						sockets.push_back({"", SocketType::Subtitle});
+					}
+				}
+				return true;
+			},
+			true);
+		return sockets;
+	}
+
+	void updateSocketsIds(
+		GraphState& state, size_t nodeIndex, IdBaseType nodeVertexId,
+		const std::vector<Socket>& newSockets,
+		const std::vector<Socket>& oldSockets, std::vector<NodeId>& oldIds,
+		bool isInput) {
+		std::vector<NodeId> newIds;
+
+		auto l = std::max(newSockets.size(), oldSockets.size());
+		for (auto i = 0u; i < l; ++i) {
+			auto socketMatch =
+				(i < newSockets.size() && i < oldSockets.size() &&
+				 newSockets[i].type == oldSockets[i].type);
+			if (socketMatch) {
+				newIds.push_back(oldIds[i]);
+				continue;
+			}
+			auto needNewSocket = i < newSockets.size();
+			auto deleteOldSocket = i < oldSockets.size();
+			if (needNewSocket) {
+				auto sVertexId = addVertex(state, nodeIndex, true, i, isInput);
+				if (isInput) {
+					addEdge(state, sVertexId, nodeVertexId);
+				} else {
+					addEdge(state, nodeVertexId, sVertexId);
+				}
+				newIds.push_back(getNodeId(sVertexId));
+			}
+			if (deleteOldSocket) { deleteVertex(state, getU(oldIds[i])); }
+		}
+		oldIds = newIds;
+	}
+
+	void dfs(
+		const GraphState& state, std::vector<bool>& marked,
+		const std::vector<FilterNode>& nodes, IdBaseType v,
+		NodeIterCallback cb) {
+		marked[v] = true;
+		if (!state.valid[v]) { return; }
+		for (auto& u : state.revAdjList[v]) {
+			if (marked[u]) { continue; }
+			dfs(state, marked, nodes, u, cb);
+		}
+		if (state.isSocket[v]) { return; }
+		cb(nodes[state.vertIdToNodeIndex[v]], getNodeId(v));
+	}
+}  // namespace
+
+void FilterGraph::optHook(
+	const Profile* profile, const NodeId& id, const int& optId,
+	const std::string& value) {
+	auto& node = getNode(id);
+	const auto& base = node.base();
+	if (base.name == INPUT_FILTER_NAME && base.options[optId].name == "path") {
+		auto newSockets = getMediaInfo(profile->runner, value);
+
+		auto nodeVertexId = getU(id);
+		auto nodeIndex = state.vertIdToNodeIndex[nodeVertexId];
+
+		updateSocketsIds(
+			state, nodeIndex, nodeVertexId, newSockets, node.output(),
+			node.outputSocketIds, false);
+		node.outputSockets = newSockets;
+	}
+}
 
 const NodeId FilterGraph::addNode(const Filter& filter) {
 	auto nodeIndex = nodes.size();
@@ -98,16 +180,14 @@ const NodeId FilterGraph::addNode(const Filter& filter) {
 
 	auto nodeVertexId = addVertex(state, nodeIndex, false, 0, false);
 
-	for (auto i = 0u; i < filter.input.size(); ++i) {
-		auto iVertexId = addVertex(state, nodeIndex, true, i, true);
-		addEdge(state, iVertexId, nodeVertexId);
-		nodes.back().inputSocketIds.push_back(getNodeId(iVertexId));
-	}
-	for (auto i = 0u; i < filter.output.size(); ++i) {
-		auto oVertexId = addVertex(state, nodeIndex, true, i, false);
-		addEdge(state, nodeVertexId, oVertexId);
-		nodes.back().outputSocketIds.push_back(getNodeId(oVertexId));
-	}
+	updateSocketsIds(
+		state, nodeIndex, nodeVertexId, filter.input, {},
+		nodes.back().inputSocketIds, true);
+
+	updateSocketsIds(
+		state, nodeIndex, nodeVertexId, filter.output, {},
+		nodes.back().outputSocketIds, false);
+
 	return getNodeId(nodeVertexId);
 }
 
@@ -140,19 +220,6 @@ void FilterGraph::iterateLinks(EdgeIterCallback cb) const {
 			}
 		}
 	}
-}
-
-void dfs(
-	const GraphState& state, std::vector<bool>& marked,
-	const std::vector<FilterNode>& nodes, IdBaseType v, NodeIterCallback cb) {
-	marked[v] = true;
-	if (!state.valid[v]) { return; }
-	for (auto& u : state.revAdjList[v]) {
-		if (marked[u]) { continue; }
-		dfs(state, marked, nodes, u, cb);
-	}
-	if (state.isSocket[v]) { return; }
-	cb(nodes[state.vertIdToNodeIndex[v]], getNodeId(v));
 }
 
 void FilterGraph::iterateNodes(

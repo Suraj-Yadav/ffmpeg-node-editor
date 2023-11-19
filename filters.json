@@ -758,11 +758,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type for 1st stream",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "curve1",
                 "type": "int"
@@ -848,11 +864,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type for 1st stream",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "c1",
                 "type": "int"
@@ -938,11 +970,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type for 2nd stream",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "curve2",
                 "type": "int"
@@ -1028,11 +1076,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type for 2nd stream",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "c2",
                 "type": "int"
@@ -2320,6 +2384,32 @@
                 "allowed": [
                     {
                         "desc": "",
+                        "value": "bandpass"
+                    },
+                    {
+                        "desc": "",
+                        "value": "lowpass"
+                    },
+                    {
+                        "desc": "",
+                        "value": "highpass"
+                    },
+                    {
+                        "desc": "",
+                        "value": "peak"
+                    }
+                ],
+                "defaultValue": "bandpass",
+                "desc": "set detection filter type",
+                "max": "3",
+                "min": "0",
+                "name": "dftype",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "",
                         "value": "bell"
                     },
                     {
@@ -2376,6 +2466,28 @@
                 "max": "1",
                 "min": "-1",
                 "name": "auto",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "set auto processing precision",
+                        "value": "auto"
+                    },
+                    {
+                        "desc": "set single-floating point processing precision",
+                        "value": "float"
+                    },
+                    {
+                        "desc": "set double-floating point processing precision",
+                        "value": "double"
+                    }
+                ],
+                "defaultValue": "auto",
+                "desc": "set processing precision",
+                "max": "2",
+                "min": "0",
+                "name": "precision",
                 "type": "int"
             },
             {
@@ -3049,11 +3161,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "curve",
                 "type": "int"
@@ -3139,11 +3267,27 @@
                     {
                         "desc": "inverted sine cardinal function",
                         "value": "isinc"
+                    },
+                    {
+                        "desc": "quartic",
+                        "value": "quat"
+                    },
+                    {
+                        "desc": "quartic root",
+                        "value": "quatr"
+                    },
+                    {
+                        "desc": "squared quarter of sine wave",
+                        "value": "qsin2"
+                    },
+                    {
+                        "desc": "squared half of sine wave",
+                        "value": "hsin2"
                     }
                 ],
                 "defaultValue": "tri",
                 "desc": "set fade curve type",
-                "max": "18",
+                "max": "22",
                 "min": "-1",
                 "name": "c",
                 "type": "int"
@@ -4130,9 +4274,374 @@
                 "min": "0",
                 "name": "precision",
                 "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "load all IRs on init",
+                        "value": "init"
+                    },
+                    {
+                        "desc": "load IR on access",
+                        "value": "access"
+                    }
+                ],
+                "defaultValue": "init",
+                "desc": "set IR loading type",
+                "max": "1",
+                "min": "0",
+                "name": "irload",
+                "type": "int"
             }
         ],
         "output": []
+    },
+    {
+        "desc": "Generate a FIR equalizer coefficients audio stream.",
+        "input": [],
+        "name": "afireqsrc",
+        "options": [
+            {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "custom"
+                    },
+                    {
+                        "desc": "",
+                        "value": "flat"
+                    },
+                    {
+                        "desc": "",
+                        "value": "acoustic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "bass"
+                    },
+                    {
+                        "desc": "",
+                        "value": "beats"
+                    },
+                    {
+                        "desc": "",
+                        "value": "classic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "clear"
+                    },
+                    {
+                        "desc": "..F.A......",
+                        "value": "deep"
+                    },
+                    {
+                        "desc": "",
+                        "value": "dubstep"
+                    },
+                    {
+                        "desc": "",
+                        "value": "electronic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "hardstyle"
+                    },
+                    {
+                        "desc": "",
+                        "value": "hip-hop"
+                    },
+                    {
+                        "desc": "",
+                        "value": "jazz"
+                    },
+                    {
+                        "desc": "",
+                        "value": "metal"
+                    },
+                    {
+                        "desc": "",
+                        "value": "movie"
+                    },
+                    {
+                        "desc": "",
+                        "value": "pop"
+                    },
+                    {
+                        "desc": "",
+                        "value": "r&b"
+                    },
+                    {
+                        "desc": "",
+                        "value": "rock"
+                    },
+                    {
+                        "desc": "..F.A......",
+                        "value": "vocal"
+                    }
+                ],
+                "defaultValue": "flat",
+                "desc": "set equalizer preset",
+                "max": "17",
+                "min": "-1",
+                "name": "preset",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "custom"
+                    },
+                    {
+                        "desc": "",
+                        "value": "flat"
+                    },
+                    {
+                        "desc": "",
+                        "value": "acoustic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "bass"
+                    },
+                    {
+                        "desc": "",
+                        "value": "beats"
+                    },
+                    {
+                        "desc": "",
+                        "value": "classic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "clear"
+                    },
+                    {
+                        "desc": "..F.A......",
+                        "value": "deep"
+                    },
+                    {
+                        "desc": "",
+                        "value": "dubstep"
+                    },
+                    {
+                        "desc": "",
+                        "value": "electronic"
+                    },
+                    {
+                        "desc": "",
+                        "value": "hardstyle"
+                    },
+                    {
+                        "desc": "",
+                        "value": "hip-hop"
+                    },
+                    {
+                        "desc": "",
+                        "value": "jazz"
+                    },
+                    {
+                        "desc": "",
+                        "value": "metal"
+                    },
+                    {
+                        "desc": "",
+                        "value": "movie"
+                    },
+                    {
+                        "desc": "",
+                        "value": "pop"
+                    },
+                    {
+                        "desc": "",
+                        "value": "r&b"
+                    },
+                    {
+                        "desc": "",
+                        "value": "rock"
+                    },
+                    {
+                        "desc": "..F.A......",
+                        "value": "vocal"
+                    }
+                ],
+                "defaultValue": "flat",
+                "desc": "set equalizer preset",
+                "max": "17",
+                "min": "-1",
+                "name": "p",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\"",
+                "desc": "set gain values per band",
+                "max": "",
+                "min": "",
+                "name": "gains",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\"",
+                "desc": "set gain values per band",
+                "max": "",
+                "min": "",
+                "name": "g",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"25 40 63 100 160 250 400 630 1000 1600 2500 4000 6300 10000 16000 24000\"",
+                "desc": "set central frequency values per band",
+                "max": "",
+                "min": "",
+                "name": "bands",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"25 40 63 100 160 250 400 630 1000 1600 2500 4000 6300 10000 16000 24000\"",
+                "desc": "set central frequency values per band",
+                "max": "",
+                "min": "",
+                "name": "b",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "4096",
+                "desc": "set number of taps",
+                "max": "65535",
+                "min": "16",
+                "name": "taps",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "4096",
+                "desc": "set number of taps",
+                "max": "65535",
+                "min": "16",
+                "name": "t",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "44100",
+                "desc": "set sample rate",
+                "max": "INT_MAX",
+                "min": "1",
+                "name": "sample_rate",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "44100",
+                "desc": "set sample rate",
+                "max": "INT_MAX",
+                "min": "1",
+                "name": "r",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1024",
+                "desc": "set the number of samples per requested frame",
+                "max": "INT_MAX",
+                "min": "1",
+                "name": "nb_samples",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1024",
+                "desc": "set the number of samples per requested frame",
+                "max": "INT_MAX",
+                "min": "1",
+                "name": "n",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "linear"
+                    },
+                    {
+                        "desc": "",
+                        "value": "cubic"
+                    }
+                ],
+                "defaultValue": "linear",
+                "desc": "set the interpolation",
+                "max": "1",
+                "min": "0",
+                "name": "interp",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "linear"
+                    },
+                    {
+                        "desc": "",
+                        "value": "cubic"
+                    }
+                ],
+                "defaultValue": "linear",
+                "desc": "set the interpolation",
+                "max": "1",
+                "min": "0",
+                "name": "i",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "linear phase",
+                        "value": "linear"
+                    },
+                    {
+                        "desc": "minimum phase",
+                        "value": "min"
+                    }
+                ],
+                "defaultValue": "min",
+                "desc": "set the phase",
+                "max": "1",
+                "min": "0",
+                "name": "phase",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "linear phase",
+                        "value": "linear"
+                    },
+                    {
+                        "desc": "minimum phase",
+                        "value": "min"
+                    }
+                ],
+                "defaultValue": "min",
+                "desc": "set the phase",
+                "max": "1",
+                "min": "0",
+                "name": "h",
+                "type": "int"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "audio"
+            }
+        ]
     },
     {
         "desc": "Generate a FIR coefficients audio stream.",
@@ -5098,14 +5607,26 @@
                     {
                         "desc": "",
                         "value": "compact"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nozero"
+                    },
+                    {
+                        "desc": "",
+                        "value": "noeof"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nodisabled"
                     }
                 ],
-                "defaultValue": "full",
+                "defaultValue": "0",
                 "desc": "set mode",
-                "max": "1",
-                "min": "0",
+                "max": "",
+                "min": "",
                 "name": "mode",
-                "type": "int"
+                "type": "flags"
             },
             {
                 "allowed": [
@@ -5116,17 +5637,37 @@
                     {
                         "desc": "",
                         "value": "compact"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nozero"
+                    },
+                    {
+                        "desc": "",
+                        "value": "noeof"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nodisabled"
                     }
                 ],
-                "defaultValue": "full",
+                "defaultValue": "0",
                 "desc": "set mode",
-                "max": "1",
-                "min": "0",
+                "max": "",
+                "min": "",
                 "name": "m",
-                "type": "int"
+                "type": "flags"
             },
             {
                 "allowed": [
+                    {
+                        "desc": "",
+                        "value": "none"
+                    },
+                    {
+                        "desc": "",
+                        "value": "all"
+                    },
                     {
                         "desc": "",
                         "value": "queue"
@@ -5190,9 +5731,13 @@
                     {
                         "desc": "",
                         "value": "sample_count_delta"
+                    },
+                    {
+                        "desc": "",
+                        "value": "disabled"
                     }
                 ],
-                "defaultValue": "queue",
+                "defaultValue": "all+queue",
                 "desc": "set flags",
                 "max": "",
                 "min": "",
@@ -5203,6 +5748,14 @@
                 "allowed": [
                     {
                         "desc": "",
+                        "value": "none"
+                    },
+                    {
+                        "desc": "",
+                        "value": "all"
+                    },
+                    {
+                        "desc": "",
                         "value": "queue"
                     },
                     {
@@ -5264,9 +5817,13 @@
                     {
                         "desc": "",
                         "value": "sample_count_delta"
+                    },
+                    {
+                        "desc": "",
+                        "value": "disabled"
                     }
                 ],
-                "defaultValue": "queue",
+                "defaultValue": "all+queue",
                 "desc": "set flags",
                 "max": "",
                 "min": "",
@@ -6488,9 +7045,18 @@
                 "defaultValue": "0",
                 "desc": "set the loop start sample",
                 "max": "I64_MAX",
-                "min": "0",
+                "min": "-1",
                 "name": "start",
                 "type": "int64"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "INT64_MAX",
+                "desc": "set the loop start time",
+                "max": "",
+                "min": "",
+                "name": "time",
+                "type": "duration"
             }
         ],
         "output": [
@@ -7370,11 +7936,15 @@
                     {
                         "desc": "noise",
                         "value": "n"
+                    },
+                    {
+                        "desc": "error",
+                        "value": "e"
                     }
                 ],
                 "defaultValue": "o",
                 "desc": "set output mode",
-                "max": "3",
+                "max": "4",
                 "min": "0",
                 "name": "out_mode",
                 "type": "int"
@@ -7463,11 +8033,15 @@
                     {
                         "desc": "noise",
                         "value": "n"
+                    },
+                    {
+                        "desc": "error",
+                        "value": "e"
                     }
                 ],
                 "defaultValue": "o",
                 "desc": "set output mode",
-                "max": "3",
+                "max": "4",
                 "min": "0",
                 "name": "out_mode",
                 "type": "int"
@@ -7685,6 +8259,15 @@
                 "min": "1",
                 "name": "n",
                 "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0.05",
+                "desc": "set density",
+                "max": "1",
+                "min": "0",
+                "name": "density",
+                "type": "double"
             }
         ],
         "output": [
@@ -8229,6 +8812,37 @@
                 "name": "order",
                 "type": "int"
             },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "audio"
+            }
+        ]
+    },
+    {
+        "desc": "Measure Audio Peak Signal-to-Noise Ratio.",
+        "input": [
+            {
+                "name": "input0",
+                "type": "audio"
+            },
+            {
+                "name": "input1",
+                "type": "audio"
+            }
+        ],
+        "name": "apsnr",
+        "options": [
             {
                 "allowed": [],
                 "defaultValue": "",
@@ -9167,6 +9781,94 @@
         ]
     },
     {
+        "desc": "Apply Recursive Least Squares algorithm to first audio stream.",
+        "input": [
+            {
+                "name": "input",
+                "type": "audio"
+            },
+            {
+                "name": "desired",
+                "type": "audio"
+            }
+        ],
+        "name": "arls",
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "16",
+                "desc": "set the filter order",
+                "max": "32767",
+                "min": "1",
+                "name": "order",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "set the filter lambda",
+                "max": "1",
+                "min": "0",
+                "name": "lambda",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "2",
+                "desc": "set the filter delta",
+                "max": "32767",
+                "min": "0",
+                "name": "delta",
+                "type": "float"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "input",
+                        "value": "i"
+                    },
+                    {
+                        "desc": "desired",
+                        "value": "d"
+                    },
+                    {
+                        "desc": "output",
+                        "value": "o"
+                    },
+                    {
+                        "desc": "noise",
+                        "value": "n"
+                    },
+                    {
+                        "desc": "error",
+                        "value": "e"
+                    }
+                ],
+                "defaultValue": "o",
+                "desc": "set output mode",
+                "max": "4",
+                "min": "0",
+                "name": "out_mode",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "audio"
+            }
+        ]
+    },
+    {
         "desc": "Reduce noise from speech using Recurrent Neural Networks.",
         "input": [
             {
@@ -9233,7 +9935,17 @@
             }
         ],
         "name": "asdr",
-        "options": [],
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
         "output": [
             {
                 "name": "default",
@@ -9419,6 +10131,15 @@
                 "max": "",
                 "min": "",
                 "name": "p",
+                "type": "boolean"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
                 "type": "boolean"
             }
         ],
@@ -9667,6 +10388,37 @@
                 "name": "type",
                 "type": "int"
             },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "audio"
+            }
+        ]
+    },
+    {
+        "desc": "Measure Audio Scale-Invariant Signal-to-Distortion Ratio.",
+        "input": [
+            {
+                "name": "input0",
+                "type": "audio"
+            },
+            {
+                "name": "input1",
+                "type": "audio"
+            }
+        ],
+        "name": "asisdr",
+        "options": [
             {
                 "allowed": [],
                 "defaultValue": "",
@@ -10250,9 +11002,13 @@
                     {
                         "desc": "",
                         "value": "Zero_crossings_rate"
+                    },
+                    {
+                        "desc": "",
+                        "value": "Abs_Peak_count"
                     }
                 ],
-                "defaultValue": "all+Bit_depth+Crest_factor+DC_offset+Dynamic_range+Entropy+Flat_factor+Max_difference+Max_level+Mean_difference+Min_difference+Min_level+Noise_floor+Noise_floor_count+Number_of_Infs+Number_of_NaNs+Number_of_denormals+Number_of_samples+Peak_count+Peak_level+RMS_difference+RMS_level+RMS_peak+RMS_trough+Zero_crossings+Zero_crossings_rate",
+                "defaultValue": "all+Bit_depth+Crest_factor+DC_offset+Dynamic_range+Entropy+Flat_factor+Max_difference+Max_level+Mean_difference+Min_difference+Min_level+Noise_floor+Noise_floor_count+Number_of_Infs+Number_of_NaNs+Number_of_denormals+Number_of_samples+Peak_count+Peak_level+RMS_difference+RMS_level+RMS_peak+RMS_trough+Zero_crossings+Zero_crossings_rate+Abs_Peak_count",
                 "desc": "Select the parameters which are measured per channel",
                 "max": "",
                 "min": "",
@@ -10368,9 +11124,13 @@
                     {
                         "desc": "",
                         "value": "Zero_crossings_rate"
+                    },
+                    {
+                        "desc": "",
+                        "value": "Abs_Peak_count"
                     }
                 ],
-                "defaultValue": "all+Bit_depth+Crest_factor+DC_offset+Dynamic_range+Entropy+Flat_factor+Max_difference+Max_level+Mean_difference+Min_difference+Min_level+Noise_floor+Noise_floor_count+Number_of_Infs+Number_of_NaNs+Number_of_denormals+Number_of_samples+Peak_count+Peak_level+RMS_difference+RMS_level+RMS_peak+RMS_trough+Zero_crossings+Zero_crossings_rate",
+                "defaultValue": "all+Bit_depth+Crest_factor+DC_offset+Dynamic_range+Entropy+Flat_factor+Max_difference+Max_level+Mean_difference+Min_difference+Min_level+Noise_floor+Noise_floor_count+Number_of_Infs+Number_of_NaNs+Number_of_denormals+Number_of_samples+Peak_count+Peak_level+RMS_difference+RMS_level+RMS_peak+RMS_trough+Zero_crossings+Zero_crossings_rate+Abs_Peak_count",
                 "desc": "Select the parameters which are measured overall",
                 "max": "",
                 "min": "",
@@ -11486,20 +12246,20 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "15",
-                "desc": "Set planes to filter (bitmask)",
-                "max": "15",
-                "min": "0",
-                "name": "planes",
-                "type": "int"
-            },
-            {
-                "allowed": [],
                 "defaultValue": "3",
                 "desc": "Set vertical radius",
                 "max": "32",
                 "min": "1",
                 "name": "sizeY",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "15",
+                "desc": "Set planes to filter (bitmask)",
+                "max": "15",
+                "min": "0",
+                "name": "planes",
                 "type": "int"
             }
         ],
@@ -11715,7 +12475,7 @@
             {
                 "allowed": [],
                 "defaultValue": "256",
-                "desc": "set segment size",
+                "desc": "set the segment size",
                 "max": "131072",
                 "min": "2",
                 "name": "size",
@@ -11730,11 +12490,15 @@
                     {
                         "desc": "fast algorithm",
                         "value": "fast"
+                    },
+                    {
+                        "desc": "best algorithm",
+                        "value": "best"
                     }
                 ],
-                "defaultValue": "slow",
-                "desc": "set algorithm",
-                "max": "1",
+                "defaultValue": "best",
+                "desc": "set the algorithm",
+                "max": "2",
                 "min": "0",
                 "name": "algo",
                 "type": "int"
@@ -15491,6 +16255,192 @@
         ]
     },
     {
+        "desc": "Deinterlace CUDA frames",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "bwdif_cuda",
+        "options": [
+            {
+                "allowed": [
+                    {
+                        "desc": "send one frame for each frame",
+                        "value": "send_frame"
+                    },
+                    {
+                        "desc": "send one frame for each field",
+                        "value": "send_field"
+                    },
+                    {
+                        "desc": "send one frame for each frame, but skip spatial interlacing check",
+                        "value": "send_frame_nospatial"
+                    },
+                    {
+                        "desc": "send one frame for each field, but skip spatial interlacing check",
+                        "value": "send_field_nospatial"
+                    }
+                ],
+                "defaultValue": "send_frame",
+                "desc": "specify the interlacing mode",
+                "max": "3",
+                "min": "0",
+                "name": "mode",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "assume top field first",
+                        "value": "tff"
+                    },
+                    {
+                        "desc": "assume bottom field first",
+                        "value": "bff"
+                    },
+                    {
+                        "desc": "auto detect parity",
+                        "value": "auto"
+                    }
+                ],
+                "defaultValue": "auto",
+                "desc": "specify the assumed picture field parity",
+                "max": "1",
+                "min": "-1",
+                "name": "parity",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "deinterlace all frames",
+                        "value": "all"
+                    },
+                    {
+                        "desc": "only deinterlace frames marked as interlaced",
+                        "value": "interlaced"
+                    }
+                ],
+                "defaultValue": "all",
+                "desc": "specify which frames to deinterlace",
+                "max": "1",
+                "min": "0",
+                "name": "deint",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Deinterlace Vulkan frames via bwdif",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "bwdif_vulkan",
+        "options": [
+            {
+                "allowed": [
+                    {
+                        "desc": "send one frame for each frame",
+                        "value": "send_frame"
+                    },
+                    {
+                        "desc": "send one frame for each field",
+                        "value": "send_field"
+                    },
+                    {
+                        "desc": "send one frame for each frame, but skip spatial interlacing check",
+                        "value": "send_frame_nospatial"
+                    },
+                    {
+                        "desc": "send one frame for each field, but skip spatial interlacing check",
+                        "value": "send_field_nospatial"
+                    }
+                ],
+                "defaultValue": "send_frame",
+                "desc": "specify the interlacing mode",
+                "max": "3",
+                "min": "0",
+                "name": "mode",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "assume top field first",
+                        "value": "tff"
+                    },
+                    {
+                        "desc": "assume bottom field first",
+                        "value": "bff"
+                    },
+                    {
+                        "desc": "auto detect parity",
+                        "value": "auto"
+                    }
+                ],
+                "defaultValue": "auto",
+                "desc": "specify the assumed picture field parity",
+                "max": "1",
+                "min": "-1",
+                "name": "parity",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "deinterlace all frames",
+                        "value": "all"
+                    },
+                    {
+                        "desc": "only deinterlace frames marked as interlaced",
+                        "value": "interlaced"
+                    }
+                ],
+                "defaultValue": "all",
+                "desc": "specify which frames to deinterlace",
+                "max": "1",
+                "min": "0",
+                "name": "deint",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
         "desc": "Contrast Adaptive Sharpen.",
         "input": [
             {
@@ -15528,6 +16478,23 @@
                 "type": "boolean"
             }
         ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Repack CEA-708 closed caption metadata",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "ccrepack",
+        "options": [],
         "output": [
             {
                 "name": "default",
@@ -16739,6 +17706,143 @@
                 "min": "0",
                 "name": "sar",
                 "type": "rational"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Generate a constant color (Vulkan)",
+        "input": [],
+        "name": "color_vulkan",
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "\"black\"",
+                "desc": "set color",
+                "max": "",
+                "min": "",
+                "name": "color",
+                "type": "color"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"black\"",
+                "desc": "set color",
+                "max": "",
+                "min": "",
+                "name": "c",
+                "type": "color"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"1920x1080\"",
+                "desc": "set video size",
+                "max": "",
+                "min": "",
+                "name": "size",
+                "type": "image_size"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"1920x1080\"",
+                "desc": "set video size",
+                "max": "",
+                "min": "",
+                "name": "s",
+                "type": "image_size"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"60\"",
+                "desc": "set video rate",
+                "max": "",
+                "min": "",
+                "name": "rate",
+                "type": "video_rate"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"60\"",
+                "desc": "set video rate",
+                "max": "",
+                "min": "",
+                "name": "r",
+                "type": "video_rate"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "-0.000001",
+                "desc": "set video duration",
+                "max": "",
+                "min": "",
+                "name": "duration",
+                "type": "duration"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "-0.000001",
+                "desc": "set video duration",
+                "max": "",
+                "min": "",
+                "name": "d",
+                "type": "duration"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1/1",
+                "desc": "set video sample aspect ratio",
+                "max": "INT_MAX",
+                "min": "0",
+                "name": "sar",
+                "type": "rational"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "Output video format (software format of hardware frames)",
+                "max": "",
+                "min": "",
+                "name": "format",
+                "type": "string"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "Full range",
+                        "value": "full"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "limited"
+                    },
+                    {
+                        "desc": "Full range",
+                        "value": "jpeg"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "mpeg"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "tv"
+                    },
+                    {
+                        "desc": "Full range",
+                        "value": "pc"
+                    }
+                ],
+                "defaultValue": "0",
+                "desc": "Output colour range (from 0 to 2) (default 0)",
+                "max": "2",
+                "min": "0",
+                "name": "out_range",
+                "type": "int"
             }
         ],
         "output": [
@@ -21564,13 +22668,8 @@
                 "type": "int"
             },
             {
-                "allowed": [
-                    {
-                        "desc": "native backend flag",
-                        "value": "native"
-                    }
-                ],
-                "defaultValue": "native",
+                "allowed": [],
+                "defaultValue": "1",
                 "desc": "DNN backend",
                 "max": "1",
                 "min": "0",
@@ -22483,13 +23582,8 @@
         "name": "dnn_processing",
         "options": [
             {
-                "allowed": [
-                    {
-                        "desc": "native backend flag",
-                        "value": "native"
-                    }
-                ],
-                "defaultValue": "native",
+                "allowed": [],
+                "defaultValue": "1",
                 "desc": "DNN backend",
                 "max": "INT_MAX",
                 "min": "INT_MIN",
@@ -23161,12 +24255,12 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "0",
-                "desc": "set box border width",
-                "max": "INT_MAX",
-                "min": "INT_MIN",
+                "defaultValue": "\"0\"",
+                "desc": "set box borders width",
+                "max": "",
+                "min": "",
                 "name": "boxborderw",
-                "type": "int"
+                "type": "string"
             },
             {
                 "allowed": [],
@@ -23187,6 +24281,64 @@
                 "type": "string"
             },
             {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "left"
+                    },
+                    {
+                        "desc": "",
+                        "value": "L"
+                    },
+                    {
+                        "desc": "",
+                        "value": "right"
+                    },
+                    {
+                        "desc": "",
+                        "value": "R"
+                    },
+                    {
+                        "desc": "",
+                        "value": "center"
+                    },
+                    {
+                        "desc": "",
+                        "value": "C"
+                    },
+                    {
+                        "desc": "",
+                        "value": "top"
+                    },
+                    {
+                        "desc": "",
+                        "value": "T"
+                    },
+                    {
+                        "desc": "",
+                        "value": "bottom"
+                    },
+                    {
+                        "desc": "",
+                        "value": "B"
+                    },
+                    {
+                        "desc": "",
+                        "value": "middle"
+                    },
+                    {
+                        "desc": "",
+                        "value": "M"
+                    }
+                ],
+                "defaultValue": "0",
+                "desc": "set text alignment",
+                "max": "",
+                "min": "",
+                "name": "text_align",
+                "type": "flags"
+            },
+            {
                 "allowed": [],
                 "defaultValue": "\"0\"",
                 "desc": "set x expression",
@@ -23203,6 +24355,24 @@
                 "min": "",
                 "name": "y",
                 "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set box width",
+                "max": "INT_MAX",
+                "min": "0",
+                "name": "boxw",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set box height",
+                "max": "INT_MAX",
+                "min": "0",
+                "name": "boxh",
+                "type": "int"
             },
             {
                 "allowed": [],
@@ -23278,6 +24448,28 @@
                 "max": "2",
                 "min": "0",
                 "name": "expansion",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "y is referred to the top of the first text line",
+                        "value": "text"
+                    },
+                    {
+                        "desc": "y is referred to the baseline of the first line",
+                        "value": "baseline"
+                    },
+                    {
+                        "desc": "y is referred to the font defined line metrics",
+                        "value": "font"
+                    }
+                ],
+                "defaultValue": "text",
+                "desc": "set the y alignment",
+                "max": "2",
+                "min": "0",
+                "name": "y_align",
                 "type": "int"
             },
             {
@@ -23939,6 +25131,60 @@
                 "min": "0",
                 "name": "scale",
                 "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "integrated loudness (LUFS)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "integrated",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "loudness range (LU)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "range",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "LRA low (LUFS)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "lra_low",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "LRA high (LUFS)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "lra_high",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "sample peak (dBFS)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "sample_peak",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "true peak (dBFS)",
+                "max": "DBL_MAX",
+                "min": "-DBL_MAX",
+                "name": "true_peak",
+                "type": "double"
             }
         ],
         "output": []
@@ -24895,30 +26141,30 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "1",
+                "defaultValue": "2",
                 "desc": "specify the edge cost for edge matching",
-                "max": "9",
+                "max": "50",
                 "min": "0",
                 "name": "ecost",
-                "type": "float"
+                "type": "int"
             },
             {
                 "allowed": [],
-                "defaultValue": "0.5",
+                "defaultValue": "1",
                 "desc": "specify the middle cost for edge matching",
-                "max": "1",
+                "max": "50",
                 "min": "0",
                 "name": "mcost",
-                "type": "float"
+                "type": "int"
             },
             {
                 "allowed": [],
-                "defaultValue": "0.5",
+                "defaultValue": "1",
                 "desc": "specify the distance cost for edge matching",
-                "max": "1",
+                "max": "50",
                 "min": "0",
                 "name": "dcost",
-                "type": "float"
+                "type": "int"
             },
             {
                 "allowed": [
@@ -27962,14 +29208,26 @@
                     {
                         "desc": "",
                         "value": "compact"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nozero"
+                    },
+                    {
+                        "desc": "",
+                        "value": "noeof"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nodisabled"
                     }
                 ],
-                "defaultValue": "full",
+                "defaultValue": "0",
                 "desc": "set mode",
-                "max": "1",
-                "min": "0",
+                "max": "",
+                "min": "",
                 "name": "mode",
-                "type": "int"
+                "type": "flags"
             },
             {
                 "allowed": [
@@ -27980,17 +29238,37 @@
                     {
                         "desc": "",
                         "value": "compact"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nozero"
+                    },
+                    {
+                        "desc": "",
+                        "value": "noeof"
+                    },
+                    {
+                        "desc": "",
+                        "value": "nodisabled"
                     }
                 ],
-                "defaultValue": "full",
+                "defaultValue": "0",
                 "desc": "set mode",
-                "max": "1",
-                "min": "0",
+                "max": "",
+                "min": "",
                 "name": "m",
-                "type": "int"
+                "type": "flags"
             },
             {
                 "allowed": [
+                    {
+                        "desc": "",
+                        "value": "none"
+                    },
+                    {
+                        "desc": "",
+                        "value": "all"
+                    },
                     {
                         "desc": "",
                         "value": "queue"
@@ -28054,9 +29332,13 @@
                     {
                         "desc": "",
                         "value": "sample_count_delta"
+                    },
+                    {
+                        "desc": "",
+                        "value": "disabled"
                     }
                 ],
-                "defaultValue": "queue",
+                "defaultValue": "all+queue",
                 "desc": "set flags",
                 "max": "",
                 "min": "",
@@ -28067,6 +29349,14 @@
                 "allowed": [
                     {
                         "desc": "",
+                        "value": "none"
+                    },
+                    {
+                        "desc": "",
+                        "value": "all"
+                    },
+                    {
+                        "desc": "",
                         "value": "queue"
                     },
                     {
@@ -28128,9 +29418,13 @@
                     {
                         "desc": "",
                         "value": "sample_count_delta"
+                    },
+                    {
+                        "desc": "",
+                        "value": "disabled"
                     }
                 ],
-                "defaultValue": "queue",
+                "defaultValue": "all+queue",
                 "desc": "set flags",
                 "max": "",
                 "min": "",
@@ -32423,18 +33717,22 @@
     },
     {
         "desc": "Apply various GPU filters from libplacebo",
-        "input": [
-            {
-                "name": "default",
-                "type": "video"
-            }
-        ],
+        "input": [],
         "name": "libplacebo",
         "options": [
             {
                 "allowed": [],
+                "defaultValue": "1",
+                "desc": "Number of inputs",
+                "max": "INT_MAX",
+                "min": "1",
+                "name": "inputs",
+                "type": "int"
+            },
+            {
+                "allowed": [],
                 "defaultValue": "\"iw\"",
-                "desc": "Output video width",
+                "desc": "Output video frame width",
                 "max": "",
                 "min": "",
                 "name": "w",
@@ -32443,10 +33741,91 @@
             {
                 "allowed": [],
                 "defaultValue": "\"ih\"",
-                "desc": "Output video height",
+                "desc": "Output video frame height",
                 "max": "",
                 "min": "",
                 "name": "h",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"none\"",
+                "desc": "Output video frame rate",
+                "max": "",
+                "min": "",
+                "name": "fps",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"(iw-cw)/2\"",
+                "desc": "Input video crop x",
+                "max": "",
+                "min": "",
+                "name": "crop_x",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"(ih-ch)/2\"",
+                "desc": "Input video crop y",
+                "max": "",
+                "min": "",
+                "name": "crop_y",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"iw\"",
+                "desc": "Input video crop w",
+                "max": "",
+                "min": "",
+                "name": "crop_w",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"ih\"",
+                "desc": "Input video crop h",
+                "max": "",
+                "min": "",
+                "name": "crop_h",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"(ow-pw)/2\"",
+                "desc": "Output video placement x",
+                "max": "",
+                "min": "",
+                "name": "pos_x",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"(oh-ph)/2\"",
+                "desc": "Output video placement y",
+                "max": "",
+                "min": "",
+                "name": "pos_y",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"ow\"",
+                "desc": "Output video placement w",
+                "max": "",
+                "min": "",
+                "name": "pos_w",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"oh\"",
+                "desc": "Output video placement h",
+                "max": "",
+                "min": "",
+                "name": "pos_h",
                 "type": "string"
             },
             {
@@ -32492,7 +33871,7 @@
             {
                 "allowed": [],
                 "defaultValue": "false",
-                "desc": "force SAR normalization to 1:1",
+                "desc": "force SAR normalization to 1:1 by adjusting pos_x/y/w/h",
                 "max": "",
                 "min": "",
                 "name": "normalize_sar",
@@ -32506,6 +33885,33 @@
                 "min": "0",
                 "name": "pad_crop_ratio",
                 "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"black\"",
+                "desc": "Background fill color",
+                "max": "",
+                "min": "",
+                "name": "fillcolor",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "Corner rounding radius",
+                "max": "1",
+                "min": "0",
+                "name": "corner_rounding",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "Pass extra libplacebo-specific options using a :-separated list of key=value pairs",
+                "max": "",
+                "min": "",
+                "name": "extra_opts",
+                "type": "dictionary"
             },
             {
                 "allowed": [
@@ -32763,6 +34169,15 @@
             },
             {
                 "allowed": [],
+                "defaultValue": "\"none\"",
+                "desc": "Frame mixing function",
+                "max": "",
+                "min": "",
+                "name": "frame_mixer",
+                "type": "string"
+            },
+            {
+                "allowed": [],
                 "defaultValue": "0",
                 "desc": "Number of scaler LUT entries",
                 "max": "256",
@@ -32943,61 +34358,55 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "0.05",
-                "desc": "Tone-mapping overshoot margin",
-                "max": "1",
+                "defaultValue": "99.995",
+                "desc": "Peak detection percentile",
+                "max": "100",
                 "min": "0",
-                "name": "overshoot",
+                "name": "percentile",
                 "type": "float"
             },
             {
                 "allowed": [
                     {
-                        "desc": "Perceptual",
+                        "desc": "Hard-clip (RGB per-channel)",
+                        "value": "clip"
+                    },
+                    {
+                        "desc": "Colorimetric soft clipping",
                         "value": "perceptual"
                     },
                     {
-                        "desc": "Relative colorimetric",
+                        "desc": "Relative colorimetric clipping",
                         "value": "relative"
                     },
                     {
-                        "desc": "Absolute colorimetric",
+                        "desc": "Saturation mapping (RGB -> RGB)",
+                        "value": "saturation"
+                    },
+                    {
+                        "desc": "Absolute colorimetric clipping",
                         "value": "absolute"
                     },
                     {
-                        "desc": "Saturation mapping",
-                        "value": "saturation"
-                    }
-                ],
-                "defaultValue": "relative",
-                "desc": "Rendering intent",
-                "max": "3",
-                "min": "0",
-                "name": "intent",
-                "type": "int"
-            },
-            {
-                "allowed": [
+                        "desc": "Colorimetrically desaturate colors towards white",
+                        "value": "desaturate"
+                    },
                     {
-                        "desc": "Hard-clip gamut boundary",
-                        "value": "clip"
+                        "desc": "Colorimetric clip with bias towards darkening image to fit gamut",
+                        "value": "darken"
                     },
                     {
                         "desc": "Highlight out-of-gamut colors",
                         "value": "warn"
                     },
                     {
-                        "desc": "Darken image to fit gamut",
-                        "value": "darken"
-                    },
-                    {
-                        "desc": "Colorimetrically desaturate colors",
-                        "value": "desaturate"
+                        "desc": "Linearly reduce chromaticity to fit gamut",
+                        "value": "linear"
                     }
                 ],
-                "defaultValue": "clip",
+                "defaultValue": "perceptual",
                 "desc": "Gamut-mapping mode",
-                "max": "3",
+                "max": "8",
                 "min": "0",
                 "name": "gamut_mode",
                 "type": "int"
@@ -33070,36 +34479,6 @@
                 "type": "float"
             },
             {
-                "allowed": [
-                    {
-                        "desc": "Automatic selection",
-                        "value": "auto"
-                    },
-                    {
-                        "desc": "Per-channel (RGB)",
-                        "value": "rgb"
-                    },
-                    {
-                        "desc": "Maximum component",
-                        "value": "max"
-                    },
-                    {
-                        "desc": "Hybrid of Luma/RGB",
-                        "value": "hybrid"
-                    },
-                    {
-                        "desc": "Luminance",
-                        "value": "luma"
-                    }
-                ],
-                "defaultValue": "auto",
-                "desc": "Tone-mapping mode",
-                "max": "4",
-                "min": "0",
-                "name": "tonemapping_mode",
-                "type": "int"
-            },
-            {
                 "allowed": [],
                 "defaultValue": "false",
                 "desc": "Inverse tone mapping (range expansion)",
@@ -33110,21 +34489,30 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "0.04",
-                "desc": "Crosstalk factor for tone-mapping",
-                "max": "0.3",
-                "min": "0",
-                "name": "tonemapping_crosstalk",
-                "type": "float"
-            },
-            {
-                "allowed": [],
                 "defaultValue": "256",
                 "desc": "Tone-mapping LUT size",
                 "max": "1024",
                 "min": "2",
                 "name": "tonemapping_lut_size",
                 "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0.3",
+                "desc": "HDR contrast recovery strength",
+                "max": "3",
+                "min": "0",
+                "name": "contrast_recovery",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "3.5",
+                "desc": "HDR contrast recovery smoothness",
+                "max": "32",
+                "min": "1",
+                "name": "contrast_smoothness",
+                "type": "float"
             },
             {
                 "allowed": [],
@@ -33156,11 +34544,94 @@
             {
                 "allowed": [],
                 "defaultValue": "false",
-                "desc": "Enable colorimetric gamut clipping",
+                "desc": "Enable desaturating colorimetric gamut clipping",
                 "max": "",
                 "min": "",
                 "name": "gamut_clipping",
                 "type": "boolean"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "Perceptual",
+                        "value": "perceptual"
+                    },
+                    {
+                        "desc": "Relative colorimetric",
+                        "value": "relative"
+                    },
+                    {
+                        "desc": "Absolute colorimetric",
+                        "value": "absolute"
+                    },
+                    {
+                        "desc": "Saturation mapping",
+                        "value": "saturation"
+                    }
+                ],
+                "defaultValue": "perceptual",
+                "desc": "Rendering intent",
+                "max": "3",
+                "min": "0",
+                "name": "intent",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "Automatic selection",
+                        "value": "auto"
+                    },
+                    {
+                        "desc": "Per-channel (RGB)",
+                        "value": "rgb"
+                    },
+                    {
+                        "desc": "Maximum component",
+                        "value": "max"
+                    },
+                    {
+                        "desc": "Hybrid of Luma/RGB",
+                        "value": "hybrid"
+                    },
+                    {
+                        "desc": "Luminance",
+                        "value": "luma"
+                    }
+                ],
+                "defaultValue": "auto",
+                "desc": "Tone-mapping mode",
+                "max": "4",
+                "min": "0",
+                "name": "tonemapping_mode",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0.04",
+                "desc": "Crosstalk factor for tone-mapping",
+                "max": "0.3",
+                "min": "0",
+                "name": "tonemapping_crosstalk",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0.05",
+                "desc": "Tone-mapping overshoot margin",
+                "max": "1",
+                "min": "0",
+                "name": "overshoot",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0.2",
+                "desc": "Tone-mapping hybrid LMS mixing coefficient",
+                "max": "1",
+                "min": "0",
+                "name": "hybrid_mix",
+                "type": "float"
             },
             {
                 "allowed": [
@@ -33298,7 +34769,7 @@
             {
                 "allowed": [],
                 "defaultValue": "false",
-                "desc": "Force the use of a full ICC 3DLUT for color mapping",
+                "desc": "Deprecated, does nothing",
                 "max": "",
                 "min": "",
                 "name": "force_icc_lut",
@@ -33347,15 +34818,6 @@
             {
                 "allowed": [],
                 "defaultValue": "",
-                "desc": "use model='path=...'.",
-                "max": "",
-                "min": "",
-                "name": "model_path",
-                "type": "string"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "",
                 "desc": "Set the file path to be used to write log.",
                 "max": "",
                 "min": "",
@@ -33370,51 +34832,6 @@
                 "min": "",
                 "name": "log_fmt",
                 "type": "string"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "use model='enable_transform=true'.",
-                "max": "",
-                "min": "",
-                "name": "enable_transform",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "use model='enable_transform=true'.",
-                "max": "",
-                "min": "",
-                "name": "phone_model",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "use feature='name=psnr'.",
-                "max": "",
-                "min": "",
-                "name": "psnr",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "use feature='name=float_ssim'.",
-                "max": "",
-                "min": "",
-                "name": "ssim",
-                "type": "boolean"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "use feature='name=float_ms_ssim'.",
-                "max": "",
-                "min": "",
-                "name": "ms_ssim",
-                "type": "boolean"
             },
             {
                 "allowed": [],
@@ -33442,15 +34859,6 @@
                 "min": "1",
                 "name": "n_subsample",
                 "type": "int"
-            },
-            {
-                "allowed": [],
-                "defaultValue": "false",
-                "desc": "model='enable_conf_interval=true'.",
-                "max": "",
-                "min": "",
-                "name": "enable_conf_interval",
-                "type": "boolean"
             },
             {
                 "allowed": [],
@@ -33838,9 +35246,18 @@
                 "defaultValue": "0",
                 "desc": "set the loop start frame",
                 "max": "I64_MAX",
-                "min": "0",
+                "min": "-1",
                 "name": "start",
                 "type": "int64"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "INT64_MAX",
+                "desc": "set the loop start time",
+                "max": "",
+                "min": "",
+                "name": "time",
+                "type": "duration"
             }
         ],
         "output": [
@@ -35991,6 +37408,77 @@
         ]
     },
     {
+        "desc": "Apply motion compensating deinterlacing.",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "mcdeint",
+        "options": [
+            {
+                "allowed": [
+                    {
+                        "desc": "",
+                        "value": "fast"
+                    },
+                    {
+                        "desc": "",
+                        "value": "medium"
+                    },
+                    {
+                        "desc": "",
+                        "value": "slow"
+                    },
+                    {
+                        "desc": "",
+                        "value": "extra_slow"
+                    }
+                ],
+                "defaultValue": "fast",
+                "desc": "set mode",
+                "max": "3",
+                "min": "0",
+                "name": "mode",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "assume top field first",
+                        "value": "tff"
+                    },
+                    {
+                        "desc": "assume bottom field first",
+                        "value": "bff"
+                    }
+                ],
+                "defaultValue": "bff",
+                "desc": "set the assumed picture field parity",
+                "max": "1",
+                "min": "-1",
+                "name": "parity",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "set qp",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "qp",
+                "type": "int"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
         "desc": "Multiband Compress or expand audio dynamic range.",
         "input": [
             {
@@ -37073,6 +38561,15 @@
             },
             {
                 "allowed": [],
+                "defaultValue": "0",
+                "desc": "set the number of similar consecutive frames to be kept before starting to drop similar frames",
+                "max": "INT_MAX",
+                "min": "0",
+                "name": "keep",
+                "type": "int"
+            },
+            {
+                "allowed": [],
                 "defaultValue": "768",
                 "desc": "set high dropping threshold",
                 "max": "INT_MAX",
@@ -37627,6 +39124,132 @@
                 "max": "99",
                 "min": "0",
                 "name": "rc",
+                "type": "int"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Non-local means denoiser (Vulkan)",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "nlmeans_vulkan",
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "denoising strength for all components",
+                "max": "100",
+                "min": "1",
+                "name": "s",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "7",
+                "desc": "patch size for all components",
+                "max": "99",
+                "min": "0",
+                "name": "p",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "15",
+                "desc": "research window radius",
+                "max": "99",
+                "min": "0",
+                "name": "r",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "36",
+                "desc": "parallelism",
+                "max": "168",
+                "min": "1",
+                "name": "t",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "denoising strength for component 1",
+                "max": "100",
+                "min": "1",
+                "name": "s1",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "denoising strength for component 2",
+                "max": "100",
+                "min": "1",
+                "name": "s2",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "denoising strength for component 3",
+                "max": "100",
+                "min": "1",
+                "name": "s3",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "denoising strength for component 4",
+                "max": "100",
+                "min": "1",
+                "name": "s4",
+                "type": "double"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "patch size for component 1",
+                "max": "99",
+                "min": "0",
+                "name": "p1",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "patch size for component 2",
+                "max": "99",
+                "min": "0",
+                "name": "p2",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "patch size for component 3",
+                "max": "99",
+                "min": "0",
+                "name": "p3",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "patch size for component 4",
+                "max": "99",
+                "min": "0",
+                "name": "p4",
                 "type": "int"
             }
         ],
@@ -38827,6 +40450,10 @@
                     },
                     {
                         "desc": "",
+                        "value": "yuv444p10"
+                    },
+                    {
+                        "desc": "",
                         "value": "rgb"
                     },
                     {
@@ -38840,7 +40467,7 @@
                 ],
                 "defaultValue": "yuv420",
                 "desc": "set output format",
-                "max": "7",
+                "max": "8",
                 "min": "0",
                 "name": "format",
                 "type": "int"
@@ -40932,11 +42559,35 @@
                     {
                         "desc": "",
                         "value": "spectral"
+                    },
+                    {
+                        "desc": "",
+                        "value": "cool"
+                    },
+                    {
+                        "desc": "",
+                        "value": "heat"
+                    },
+                    {
+                        "desc": "",
+                        "value": "fiery"
+                    },
+                    {
+                        "desc": "",
+                        "value": "blues"
+                    },
+                    {
+                        "desc": "",
+                        "value": "green"
+                    },
+                    {
+                        "desc": "",
+                        "value": "helix"
                     }
                 ],
                 "defaultValue": "none",
                 "desc": "set preset",
-                "max": "14",
+                "max": "20",
                 "min": "-1",
                 "name": "preset",
                 "type": "int"
@@ -41006,11 +42657,35 @@
                     {
                         "desc": "",
                         "value": "spectral"
+                    },
+                    {
+                        "desc": "",
+                        "value": "cool"
+                    },
+                    {
+                        "desc": "",
+                        "value": "heat"
+                    },
+                    {
+                        "desc": "",
+                        "value": "fiery"
+                    },
+                    {
+                        "desc": "",
+                        "value": "blues"
+                    },
+                    {
+                        "desc": "",
+                        "value": "green"
+                    },
+                    {
+                        "desc": "",
+                        "value": "helix"
                     }
                 ],
                 "defaultValue": "none",
                 "desc": "set preset",
-                "max": "14",
+                "max": "20",
                 "min": "-1",
                 "name": "p",
                 "type": "int"
@@ -41716,7 +43391,26 @@
             }
         ],
         "name": "replaygain",
-        "options": [],
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "track gain (dB)",
+                "max": "FLT_MAX",
+                "min": "-FLT_MAX",
+                "name": "track_gain",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "track peak",
+                "max": "FLT_MAX",
+                "min": "-FLT_MAX",
+                "name": "track_peak",
+                "type": "float"
+            }
+        ],
         "output": [
             {
                 "name": "default",
@@ -45593,7 +47287,7 @@
                     },
                     {
                         "desc": "logarithmic",
-                        "value": "log2"
+                        "value": "log"
                     },
                     {
                         "desc": "bark",
@@ -45606,20 +47300,62 @@
                     {
                         "desc": "erbs",
                         "value": "erbs"
+                    },
+                    {
+                        "desc": "sqrt",
+                        "value": "sqrt"
+                    },
+                    {
+                        "desc": "cbrt",
+                        "value": "cbrt"
+                    },
+                    {
+                        "desc": "qdrt",
+                        "value": "qdrt"
                     }
                 ],
                 "defaultValue": "linear",
                 "desc": "set frequency scale",
-                "max": "4",
+                "max": "7",
                 "min": "0",
                 "name": "scale",
+                "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "linear",
+                        "value": "linear"
+                    },
+                    {
+                        "desc": "logarithmic",
+                        "value": "log"
+                    },
+                    {
+                        "desc": "sqrt",
+                        "value": "sqrt"
+                    },
+                    {
+                        "desc": "cbrt",
+                        "value": "cbrt"
+                    },
+                    {
+                        "desc": "qdrt",
+                        "value": "qdrt"
+                    }
+                ],
+                "defaultValue": "log",
+                "desc": "set intensity scale",
+                "max": "4",
+                "min": "0",
+                "name": "iscale",
                 "type": "int"
             },
             {
                 "allowed": [],
                 "defaultValue": "20",
                 "desc": "set minimum frequency",
-                "max": "2000",
+                "max": "192000",
                 "min": "1",
                 "name": "min",
                 "type": "float"
@@ -45629,8 +47365,26 @@
                 "defaultValue": "20000",
                 "desc": "set maximum frequency",
                 "max": "192000",
-                "min": "0",
+                "min": "1",
                 "name": "max",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set minimum intensity",
+                "max": "1",
+                "min": "0",
+                "name": "imin",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "set maximum intensity",
+                "max": "1",
+                "min": "0",
+                "name": "imax",
                 "type": "float"
             },
             {
@@ -45646,7 +47400,7 @@
                 "allowed": [],
                 "defaultValue": "1",
                 "desc": "set frequency deviation",
-                "max": "10",
+                "max": "100",
                 "min": "0",
                 "name": "deviation",
                 "type": "float"
@@ -45737,6 +47491,24 @@
                 "min": "0",
                 "name": "direction",
                 "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set bar ratio",
+                "max": "1",
+                "min": "0",
+                "name": "bar",
+                "type": "float"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set color rotation",
+                "max": "1",
+                "min": "-1",
+                "name": "rotation",
+                "type": "float"
             }
         ],
         "output": [
@@ -47338,12 +49110,12 @@
             },
             {
                 "allowed": [],
-                "defaultValue": "0",
+                "defaultValue": "0/1",
                 "desc": "set how many samples to show in the same point",
                 "max": "INT_MAX",
                 "min": "0",
                 "name": "n",
-                "type": "int"
+                "type": "rational"
             },
             {
                 "allowed": [],
@@ -48700,7 +50472,7 @@
             {
                 "allowed": [],
                 "defaultValue": "0",
-                "desc": "set stop duration of non-silence part",
+                "desc": "set stop duration of silence part",
                 "max": "",
                 "min": "",
                 "name": "stop_duration",
@@ -48735,7 +50507,7 @@
                         "value": "all"
                     }
                 ],
-                "defaultValue": "any",
+                "defaultValue": "all",
                 "desc": "set which channel will trigger trimming from end",
                 "max": "1",
                 "min": "0",
@@ -48745,17 +50517,33 @@
             {
                 "allowed": [
                     {
-                        "desc": "use absolute values of samples",
+                        "desc": "use mean absolute values of samples",
+                        "value": "avg"
+                    },
+                    {
+                        "desc": "use root mean squared values of samples",
+                        "value": "rms"
+                    },
+                    {
+                        "desc": "use max absolute values of samples",
                         "value": "peak"
                     },
                     {
-                        "desc": "use squared values of samples",
-                        "value": "rms"
+                        "desc": "use median of absolute values of samples",
+                        "value": "median"
+                    },
+                    {
+                        "desc": "use absolute of max peak to min peak difference",
+                        "value": "ptp"
+                    },
+                    {
+                        "desc": "use standard deviation from values of samples",
+                        "value": "dev"
                     }
                 ],
                 "defaultValue": "rms",
                 "desc": "set how silence is detected",
-                "max": "1",
+                "max": "5",
                 "min": "0",
                 "name": "detection",
                 "type": "int"
@@ -48768,6 +50556,33 @@
                 "min": "",
                 "name": "window",
                 "type": "duration"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "full timestamps rewrite, keep only the start time",
+                        "value": "write"
+                    },
+                    {
+                        "desc": "non-dropped frames are left with same timestamp",
+                        "value": "copy"
+                    }
+                ],
+                "defaultValue": "write",
+                "desc": "set how every output frame timestamp is processed",
+                "max": "1",
+                "min": "0",
+                "name": "timestamp",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
             }
         ],
         "output": [
@@ -50179,13 +51994,8 @@
         "name": "sr",
         "options": [
             {
-                "allowed": [
-                    {
-                        "desc": "native backend flag",
-                        "value": "native"
-                    }
-                ],
-                "defaultValue": "native",
+                "allowed": [],
+                "defaultValue": "1",
                 "desc": "DNN backend used for model execution",
                 "max": "1",
                 "min": "0",
@@ -51340,6 +53150,15 @@
                 "min": "",
                 "name": "force_style",
                 "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "auto",
+                "desc": "break lines according to the Unicode Line Breaking Algorithm",
+                "max": "",
+                "min": "",
+                "name": "wrap_unicode",
+                "type": "boolean"
             }
         ],
         "output": [
@@ -56096,6 +57915,69 @@
         ]
     },
     {
+        "desc": "Apply Ultra Simple / Slow Post-processing filter.",
+        "input": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ],
+        "name": "uspp",
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "3",
+                "desc": "set quality",
+                "max": "8",
+                "min": "0",
+                "name": "quality",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "force a constant quantizer parameter",
+                "max": "63",
+                "min": "0",
+                "name": "qp",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "false",
+                "desc": "use B-frames' QP",
+                "max": "",
+                "min": "",
+                "name": "use_bframe_qp",
+                "type": "boolean"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"snow\"",
+                "desc": "Codec name",
+                "max": "",
+                "min": "",
+                "name": "codec",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "The filter is enabled if evaluation is non-zero.",
+                "max": "",
+                "min": "",
+                "name": "enable",
+                "type": "boolean"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
         "desc": "Convert 360 projection of video.",
         "input": [
             {
@@ -57684,6 +59566,24 @@
                 "min": "0",
                 "name": "tripod",
                 "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "ASCII text",
+                        "value": "ascii"
+                    },
+                    {
+                        "desc": "binary",
+                        "value": "binary"
+                    }
+                ],
+                "defaultValue": "binary",
+                "desc": "transforms data file format",
+                "max": "2",
+                "min": "1",
+                "name": "fileformat",
+                "type": "int"
             }
         ],
         "output": [
@@ -58570,6 +60470,76 @@
                 "min": "0",
                 "name": "rate",
                 "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "Full range",
+                        "value": "full"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "limited"
+                    },
+                    {
+                        "desc": "Full range",
+                        "value": "jpeg"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "mpeg"
+                    },
+                    {
+                        "desc": "Limited range",
+                        "value": "tv"
+                    },
+                    {
+                        "desc": "Full range",
+                        "value": "pc"
+                    }
+                ],
+                "defaultValue": "0",
+                "desc": "Output color range",
+                "max": "2",
+                "min": "0",
+                "name": "out_range",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "Output color matrix coefficient set",
+                "max": "",
+                "min": "",
+                "name": "out_color_matrix",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "Output color primaries",
+                "max": "",
+                "min": "",
+                "name": "out_color_primaries",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "",
+                "desc": "Output color transfer characteristics",
+                "max": "",
+                "min": "",
+                "name": "out_color_transfer",
+                "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "Perform tonemapping (0=disable tonemapping, 1=perform tonemapping if the input has HDR metadata)",
+                "max": "1",
+                "min": "0",
+                "name": "tonemap",
+                "type": "int"
             }
         ],
         "output": [
@@ -59272,6 +61242,24 @@
                 "min": "0",
                 "name": "fm",
                 "type": "int"
+            },
+            {
+                "allowed": [
+                    {
+                        "desc": "try to select from all available formats",
+                        "value": "all"
+                    },
+                    {
+                        "desc": "pick first available format",
+                        "value": "first"
+                    }
+                ],
+                "defaultValue": "first",
+                "desc": "set input formats selection",
+                "max": "1",
+                "min": "0",
+                "name": "input",
+                "type": "int"
             }
         ],
         "output": [
@@ -59671,11 +61659,59 @@
                     {
                         "desc": "slow fade transition",
                         "value": "fadeslow"
+                    },
+                    {
+                        "desc": "hl wind transition",
+                        "value": "hlwind"
+                    },
+                    {
+                        "desc": "hr wind transition",
+                        "value": "hrwind"
+                    },
+                    {
+                        "desc": "vu wind transition",
+                        "value": "vuwind"
+                    },
+                    {
+                        "desc": "vd wind transition",
+                        "value": "vdwind"
+                    },
+                    {
+                        "desc": "cover left transition",
+                        "value": "coverleft"
+                    },
+                    {
+                        "desc": "cover right transition",
+                        "value": "coverright"
+                    },
+                    {
+                        "desc": "cover up transition",
+                        "value": "coverup"
+                    },
+                    {
+                        "desc": "cover down transition",
+                        "value": "coverdown"
+                    },
+                    {
+                        "desc": "reveal left transition",
+                        "value": "revealleft"
+                    },
+                    {
+                        "desc": "reveal right transition",
+                        "value": "revealright"
+                    },
+                    {
+                        "desc": "reveal up transition",
+                        "value": "revealup"
+                    },
+                    {
+                        "desc": "reveal down transition",
+                        "value": "revealdown"
                     }
                 ],
                 "defaultValue": "fade",
                 "desc": "set cross fade transition",
-                "max": "45",
+                "max": "57",
                 "min": "-1",
                 "name": "transition",
                 "type": "int"
@@ -59796,6 +61832,124 @@
                 "min": "",
                 "name": "kernel",
                 "type": "string"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1",
+                "desc": "set cross fade duration",
+                "max": "",
+                "min": "",
+                "name": "duration",
+                "type": "duration"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set cross fade start relative to first input stream",
+                "max": "",
+                "min": "",
+                "name": "offset",
+                "type": "duration"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Cross fade one video with another video.",
+        "input": [
+            {
+                "name": "main",
+                "type": "video"
+            },
+            {
+                "name": "xfade",
+                "type": "video"
+            }
+        ],
+        "name": "xfade_vulkan",
+        "options": [
+            {
+                "allowed": [
+                    {
+                        "desc": "fade transition",
+                        "value": "fade"
+                    },
+                    {
+                        "desc": "wipe left transition",
+                        "value": "wipeleft"
+                    },
+                    {
+                        "desc": "wipe right transition",
+                        "value": "wiperight"
+                    },
+                    {
+                        "desc": "wipe up transition",
+                        "value": "wipeup"
+                    },
+                    {
+                        "desc": "wipe down transition",
+                        "value": "wipedown"
+                    },
+                    {
+                        "desc": "slide down transition",
+                        "value": "slidedown"
+                    },
+                    {
+                        "desc": "slide up transition",
+                        "value": "slideup"
+                    },
+                    {
+                        "desc": "slide left transition",
+                        "value": "slideleft"
+                    },
+                    {
+                        "desc": "slide right transition",
+                        "value": "slideright"
+                    },
+                    {
+                        "desc": "circleopen transition",
+                        "value": "circleopen"
+                    },
+                    {
+                        "desc": "circleclose transition",
+                        "value": "circleclose"
+                    },
+                    {
+                        "desc": "dissolve transition",
+                        "value": "dissolve"
+                    },
+                    {
+                        "desc": "pixelize transition",
+                        "value": "pixelize"
+                    },
+                    {
+                        "desc": "wipe top left transition",
+                        "value": "wipetl"
+                    },
+                    {
+                        "desc": "wipe top right transition",
+                        "value": "wipetr"
+                    },
+                    {
+                        "desc": "wipe bottom left transition",
+                        "value": "wipebl"
+                    },
+                    {
+                        "desc": "wipe bottom right transition",
+                        "value": "wipebr"
+                    }
+                ],
+                "defaultValue": "fade",
+                "desc": "set cross fade transition",
+                "max": "16",
+                "min": "0",
+                "name": "transition",
+                "type": "int"
             },
             {
                 "allowed": [],
@@ -60425,6 +62579,226 @@
                 "min": "",
                 "name": "b",
                 "type": "string"
+            }
+        ],
+        "output": [
+            {
+                "name": "default",
+                "type": "video"
+            }
+        ]
+    },
+    {
+        "desc": "Generate zone-plate.",
+        "input": [],
+        "name": "zoneplate",
+        "options": [
+            {
+                "allowed": [],
+                "defaultValue": "\"320x240\"",
+                "desc": "set video size",
+                "max": "",
+                "min": "",
+                "name": "size",
+                "type": "image_size"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"320x240\"",
+                "desc": "set video size",
+                "max": "",
+                "min": "",
+                "name": "s",
+                "type": "image_size"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"25\"",
+                "desc": "set video rate",
+                "max": "",
+                "min": "",
+                "name": "rate",
+                "type": "video_rate"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "\"25\"",
+                "desc": "set video rate",
+                "max": "",
+                "min": "",
+                "name": "r",
+                "type": "video_rate"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "-0.000001",
+                "desc": "set video duration",
+                "max": "",
+                "min": "",
+                "name": "duration",
+                "type": "duration"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "-0.000001",
+                "desc": "set video duration",
+                "max": "",
+                "min": "",
+                "name": "d",
+                "type": "duration"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "1/1",
+                "desc": "set video sample aspect ratio",
+                "max": "INT_MAX",
+                "min": "0",
+                "name": "sar",
+                "type": "rational"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "10",
+                "desc": "set LUT precision",
+                "max": "16",
+                "min": "4",
+                "name": "precision",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set X-axis offset",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "xo",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set Y-axis offset",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "yo",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set T-axis offset",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "to",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 0-order phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "k0",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 1-order X-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kx",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 1-order Y-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "ky",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 1-order T-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kt",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set X-axis*T-axis product phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kxt",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set Y-axis*T-axis product phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kyt",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set X-axis*Y-axis product phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kxy",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 2-order X-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kx2",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 2-order Y-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "ky2",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 2-order T-axis phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kt2",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 0-order U-color phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "ku",
+                "type": "int"
+            },
+            {
+                "allowed": [],
+                "defaultValue": "0",
+                "desc": "set 0-order V-color phase",
+                "max": "INT_MAX",
+                "min": "INT_MIN",
+                "name": "kv",
+                "type": "int"
             }
         ],
         "output": [

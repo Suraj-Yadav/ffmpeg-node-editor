@@ -2,18 +2,14 @@
 
 #include <absl/strings/ascii.h>
 #include <absl/strings/match.h>
-#include <absl/strings/str_split.h>
-#include <absl/strings/string_view.h>
 #include <absl/strings/strip.h>
 #include <re2/re2.h>
 
-#include <algorithm>
 #include <fstream>
-#include <ios>
 #include <nlohmann/json.hpp>
 #include <optional>
-#include <string>
-#include <vector>
+
+#include "util.hpp"
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
 	SocketType, {
@@ -30,27 +26,87 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Filter, name, desc, input, output, options);
 
-bool readWords(absl::string_view text, absl::string_view& dest) {
-	text = absl::StripLeadingAsciiWhitespace(text);
-	auto it = std::find_if(text.begin(), text.end(), absl::ascii_isspace);
-	if (it == text.begin()) { return false; }
-	auto pos = static_cast<size_t>(it - text.begin());
-	dest = text.substr(0, pos);
-	return true;
-}
-template <typename... Args>
-bool readWords(absl::string_view text, absl::string_view& dest, Args&... rest) {
-	text = absl::StripLeadingAsciiWhitespace(text);
-	return readWords(text, dest) &&
-		   readWords(text.substr(dest.size()), rest...);
-}
+namespace {
 
-int getIndent(absl::string_view text) {
-	auto itr = std::find_if_not(text.begin(), text.end(), absl::ascii_isspace);
-	int indent = static_cast<int>(std::distance(text.begin(), itr));
-	if (itr == text.end()) { indent = 0; }
-	return indent;
-}
+	bool readWords(absl::string_view text, absl::string_view& dest) {
+		text = absl::StripLeadingAsciiWhitespace(text);
+		auto it = std::find_if(text.begin(), text.end(), absl::ascii_isspace);
+		if (it == text.begin()) { return false; }
+		auto pos = static_cast<size_t>(it - text.begin());
+		dest = text.substr(0, pos);
+		return true;
+	}
+	template <typename... Args>
+	bool readWords(
+		absl::string_view text, absl::string_view& dest, Args&... rest) {
+		text = absl::StripLeadingAsciiWhitespace(text);
+		return readWords(text, dest) &&
+			   readWords(text.substr(dest.size()), rest...);
+	}
+
+	int getIndent(absl::string_view text) {
+		auto itr =
+			std::find_if_not(text.begin(), text.end(), absl::ascii_isspace);
+		int indent = static_cast<int>(std::distance(text.begin(), itr));
+		if (itr == text.end()) { indent = 0; }
+		return indent;
+	}
+
+	bool isTimelineText(absl::string_view str) {
+		return str ==
+			   "This filter has support for timeline through the 'enable' "
+			   "option.";
+	}
+	bool isSliceThreadingText(absl::string_view str) {
+		return str == "slice threading supported";
+	}
+	bool isInput(absl::string_view str) { return str == "Inputs:"; }
+	bool isOutput(absl::string_view str) { return str == "Outputs:"; }
+	bool isNoneSocket(absl::string_view str) {
+		return str == "none (source filter)" || str == "none (sink filter)";
+	}
+	bool isDynamicSocket(absl::string_view str) {
+		return str == "dynamic (depending on the options)";
+	}
+
+	bool isOption(absl::string_view str) {
+		return absl::EndsWith(str, "AVOptions:");
+	}
+
+	void splitOption(
+		absl::string_view text, absl::string_view& name,
+		absl::string_view& type, absl::string_view& flag,
+		absl::string_view& desc) {
+		std::vector<absl::string_view> parts;
+		absl::string_view str;
+
+		for (int i = 0; i < 3; ++i) {
+			if (readWords(text, str)) {
+				parts.push_back(str);
+				text = absl::StripLeadingAsciiWhitespace(text);
+				text.remove_prefix(str.size());
+			} else {
+				break;
+			}
+		}
+		if (!text.empty()) {
+			parts.push_back(absl::StripLeadingAsciiWhitespace(text));
+		}
+		// auto parts = std::vector<absl::string_view>(
+		// 	absl::StrSplit(text, absl::MaxSplits(' ', 4)));
+		name = parts[0];
+		if (parts.size() == 2) {  // name and flag
+			flag = parts[1];
+		} else if (parts.size() == 3) {	 // name, type and flag
+			type = parts[1];
+			flag = parts[2];
+		} else if (parts.size() == 4) {
+			type = parts[1];
+			flag = parts[2];
+			desc = parts[3];
+		}
+	}
+}  // namespace
 
 class StateStack {
 	std::vector<int> indents;
@@ -93,63 +149,11 @@ class StateStack {
 	}
 };
 
-bool isTimelineText(absl::string_view str) {
-	return str ==
-		   "This filter has support for timeline through the 'enable' option.";
-}
-bool isSliceThreadingText(absl::string_view str) {
-	return str == "slice threading supported";
-}
-bool isInput(absl::string_view str) { return str == "Inputs:"; }
-bool isOutput(absl::string_view str) { return str == "Outputs:"; }
-bool isNoneSocket(absl::string_view str) {
-	return str == "none (source filter)" || str == "none (sink filter)";
-}
-bool isDynamicSocket(absl::string_view str) {
-	return str == "dynamic (depending on the options)";
-}
-
-bool isOption(absl::string_view str) {
-	return absl::EndsWith(str, "AVOptions:");
-}
 static constexpr re2::LazyRE2 SOCKET_REGEX = {R"(#\d+: (\w+) \((\w+)\))"};
 static constexpr re2::LazyRE2 OPTION_DEFAULT_REGEX = {
 	R"((.*)\(default (.+)\))"};
 static constexpr re2::LazyRE2 OPTION_RANGE_REGEX = {
 	R"((.*)\(from (.+) to (.+)\))"};
-
-void splitOption(
-	absl::string_view text, absl::string_view& name, absl::string_view& type,
-	absl::string_view& flag, absl::string_view& desc) {
-	std::vector<absl::string_view> parts;
-	absl::string_view str;
-
-	for (int i = 0; i < 3; ++i) {
-		if (readWords(text, str)) {
-			parts.push_back(str);
-			text = absl::StripLeadingAsciiWhitespace(text);
-			text.remove_prefix(str.size());
-		} else {
-			break;
-		}
-	}
-	if (!text.empty()) {
-		parts.push_back(absl::StripLeadingAsciiWhitespace(text));
-	}
-	// auto parts = std::vector<absl::string_view>(
-	// 	absl::StrSplit(text, absl::MaxSplits(' ', 4)));
-	name = parts[0];
-	if (parts.size() == 2) {  // name and flag
-		flag = parts[1];
-	} else if (parts.size() == 3) {	 // name, type and flag
-		type = parts[1];
-		flag = parts[2];
-	} else if (parts.size() == 4) {
-		type = parts[1];
-		flag = parts[2];
-		desc = parts[3];
-	}
-}
 
 class FilterParser {
 	Filter filter;
@@ -269,6 +273,13 @@ class FilterParser {
 	}
 };
 
+const std::vector<Option> InputNodeOptions = {
+	{"path", "path to input", "string"},
+};
+const std::vector<Option> OutputNodeOptions = {
+	{"path", "path to output", "string"},
+};
+
 Profile GetProfile() {
 	Runner runner("C:\\Users\\suraj\\scoop\\shims\\ffmpeg.exe");
 	Profile profile(runner);
@@ -276,35 +287,46 @@ Profile GetProfile() {
 	try {
 		auto json = nlohmann::json::parse(std::ifstream("filters.json"));
 		profile.filters = json.template get<std::vector<Filter>>();
-		return profile;
-	} catch (nlohmann::json::exception&) {}
-
-	FilterParser p;
-	runner.lineScanner(
-		{"-filters"}, [&runner, &p, &profile](absl::string_view line) {
-			auto f = p.parseFilter(runner, line);
-			if (f.has_value()) {
-				std::set<std::string> optNames;
-				for (auto itr = f->options.begin(); itr != f->options.end();) {
-					if (optNames.contains(itr->name)) {
-						itr = f->options.erase(itr);
-					} else {
-						optNames.insert(itr->name);
-						++itr;
+	} catch (nlohmann::json::exception&) {
+		FilterParser p;
+		runner.lineScanner(
+			{"-filters"}, [&runner, &p, &profile](absl::string_view line) {
+				auto f = p.parseFilter(runner, line);
+				if (f.has_value()) {
+					std::set<std::string> optNames;
+					for (auto itr = f->options.begin();
+						 itr != f->options.end();) {
+						if (contains(optNames, itr->name)) {
+							itr = f->options.erase(itr);
+						} else {
+							optNames.insert(itr->name);
+							++itr;
+						}
 					}
+					profile.filters.push_back(f.value());
 				}
-				profile.filters.push_back(f.value());
-			}
-			return true;
-		});
+				return true;
+			});
 
-	std::sort(
-		profile.filters.begin(), profile.filters.end(),
-		[](const auto& a, const auto& b) { return a.name < b.name; });
+		std::sort(
+			profile.filters.begin(), profile.filters.end(),
+			[](const auto& a, const auto& b) { return a.name < b.name; });
 
-	nlohmann::json json = profile.filters;
-	std::ofstream o("filters.json", std::ios_base::binary);
-	o << std::setw(4) << json;
+		nlohmann::json json = profile.filters;
+		std::ofstream o("filters.json", std::ios_base::binary);
+		o << std::setw(4) << json;
+	}
+
+	profile.filters.push_back(
+		{INPUT_FILTER_NAME,
+		 "Load from path",
+		 {},
+		 {},
+		 InputNodeOptions,
+		 false,
+		 true});
+	profile.filters.push_back(
+		{OUTPUT_FILTER_NAME, "Write to path", {}, {}, OutputNodeOptions, true});
 
 	return profile;
 }

@@ -1,37 +1,20 @@
 #include "node_editor.hpp"
 
-#include <absl/strings/string_view.h>
-#include <fmt/core.h>
 #include <fmt/format.h>
-#include <imgui-node-editor/imgui_node_editor.h>
-#include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/spdlog.h>
-#include <vcruntime.h>
 
-#include <algorithm>
-#include <cmath>
-#include <filesystem>
 #include <fstream>
-#include <functional>
-#include <iostream>
-#include <memory>
 #include <nlohmann/json.hpp>
-#include <ostream>
-#include <ranges>
-#include <set>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <range/v3/view.hpp>
 
-#include "ffmpeg/filter_graph.hpp"
-#include "ffmpeg/filter_node.hpp"
+#include "ffmpeg/profile.hpp"
 #include "imgui_extras.hpp"
 #include "util.hpp"
 
 #define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
+
+namespace views = ranges::views;
 
 using namespace ImGui;
 namespace ed = ax::NodeEditor;
@@ -57,10 +40,14 @@ const auto POPUP_ADD_OPT = "Select Option";
 void NodeEditor::play(const NodeId& id) {
 	bool invalid = false;
 	fmt::memory_buffer buff;
-	std::set<IdBaseType> outputs;
+	std::vector<std::string> inputs;
+	std::map<IdBaseType, std::string> inputSocketNames;
+	std::map<IdBaseType, std::string> outputSocketNames;
 	g.iterateNodes(
 		[&](const FilterNode& node, const NodeId& id) {
+			auto idx = inputs.size();
 			if (invalid) { return; }
+			auto isInput = node.base().name == INPUT_FILTER_NAME;
 			g.inputSockets(
 				id, [&](const Socket& s, const NodeId& sId,
 						const NodeId& parentSocketId) {
@@ -73,44 +60,72 @@ void NodeEditor::play(const NodeId& id) {
 							node.name);
 						return;
 					}
-					outputs.erase(parentSocketId.val);
+					outputSocketNames.erase(parentSocketId.val);
 					fmt::format_to(
-						std::back_inserter(buff), "[s{}]", parentSocketId.val);
+						std::back_inserter(buff), "{}",
+						inputSocketNames[parentSocketId.val]);
 				});
 			if (invalid) { return; }
-			fmt::format_to(
-				std::back_inserter(buff), "{}@{}{}", node.base().name,
-				node.name, id.val);
-
-			const auto& options = node.base().options;
-			for (const auto& [i, opt] : std::views::enumerate(node.option)) {
-				const auto& optId = opt.first;
-				const auto& optValue = opt.second;
-				if (i == 0) {
-					buff.push_back('=');
-				} else {
-					buff.push_back(':');
-				}
+			if (isInput) {
+				inputs.push_back(node.option.at(0));
+			} else {
 				fmt::format_to(
-					std::back_inserter(buff), "{}={}",
-					options[optId].name.data(), optValue);
+					std::back_inserter(buff), "{}@{}{}", node.name, node.name,
+					id.val);
+
+				const auto& options = node.base().options;
+				for (const auto& [i, opt] : views::enumerate(node.option)) {
+					const auto& optId = opt.first;
+					const auto& optValue = opt.second;
+					if (i == 0) {
+						buff.push_back('=');
+					} else {
+						buff.push_back(':');
+					}
+					fmt::format_to(
+						std::back_inserter(buff), "{}={}",
+						options[optId].name.data(), optValue);
+				}
 			}
+
+			auto socketIdx = 0;
 			g.outputSockets(id, [&](const Socket&, const NodeId& socketId) {
-				outputs.insert(socketId.val);
-				fmt::format_to(std::back_inserter(buff), "[s{}]", socketId.val);
+				if (isInput) {
+					// outputSocketNames[socketId.val] =
+					// 	fmt::format("{}:{}", idx, socketIdx);
+					inputSocketNames[socketId.val] =
+						fmt::format("[{}:{}]", idx, socketIdx);
+					socketIdx++;
+					return;
+				} else {
+					inputSocketNames[socketId.val] =
+						fmt::format("[s{}]", socketId.val);
+					outputSocketNames[socketId.val] =
+						fmt::format("[s{}]", socketId.val);
+					fmt::format_to(
+						std::back_inserter(buff),
+						inputSocketNames[socketId.val]);
+				}
 			});
-			fmt::format_to(std::back_inserter(buff), ";");
+			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
 		},
 		NodeIterOrder::Topological, id);
 	if (!invalid) {
 		std::vector<std::string> out;
-		for (auto& e : outputs) { out.push_back(std::format("[s{}]", e)); }
-		spdlog::info(fmt::to_string(buff));
+		for (auto& e : outputSocketNames) {
+			out.push_back(fmt::format("{}", e.second));
+		}
+		SPDLOG_INFO(fmt::to_string(buff));
 		int status = 0;
 		std::tie(status, popupString) =
-			profile->runner.play(fmt::to_string(buff), out);
+			profile->runner.play(inputs, fmt::to_string(buff), out);
 		if (status != 0) { popup = POPUP_PLAY_ERROR; }
 	}
+}
+
+void NodeEditor::optHook(
+	const NodeId& id, const int& optId, const std::string& value) {
+	g.optHook(profile, id, optId, value);
 }
 
 void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
@@ -165,7 +180,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 	{
 		// Both
-		for (const auto& [in, inID, out, outID] : std::views::zip(
+		for (const auto& [in, inID, out, outID] : views::zip(
 				 node.input(), node.inputSocketIds, node.output(),
 				 node.outputSocketIds)) {
 			DRAW_INPUT_SOCKET(in, inID.val);
@@ -176,14 +191,14 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 			std::min(node.input().size(), node.output().size());
 		// Only input
 		for (const auto& [in, inID] :
-			 std::views::zip(node.input(), node.inputSocketIds) |
-				 std::views::drop(commonCnt)) {
+			 views::zip(node.input(), node.inputSocketIds) |
+				 views::drop(commonCnt)) {
 			DRAW_INPUT_SOCKET(in, inID.val);
 		}
 		// Only output
 		for (const auto& [out, outID] :
-			 std::views::zip(node.output(), node.outputSocketIds) |
-				 std::views::drop(commonCnt)) {
+			 views::zip(node.output(), node.outputSocketIds) |
+				 views::drop(commonCnt)) {
 			DRAW_OUTPUT_SOCKET(out, outID.val);
 		}
 	}
@@ -207,7 +222,10 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 				SameLine(maxTextWidth);
 				PushItemWidth(maxTextWidth);
 				PushID(optIdx);
-				ImGui::InputText("", &optValue);
+				if (ImGui::InputText(
+						"", &optValue, ImGuiInputTextFlags_EnterReturnsTrue)) {
+					optHook(id, optIdx, optValue);
+				}
 				PopID();
 				PopItemWidth();
 			}
@@ -262,14 +280,14 @@ void NodeEditor::popups() {
 
 		searchFilter.Draw(" ");
 		auto& node = g.getNode(activeNode);
-		for (const auto& [index, opt] :
-			 std::views::enumerate(node.base().options)) {
+		for (const auto& [index, opt] : views::enumerate(node.base().options)) {
 			const auto idx = int(index);
 			if (contains(node.option, idx)) { continue; }
 			if (searchFilter.PassFilter(opt.name.c_str()) ||
 				searchFilter.PassFilter(opt.desc.c_str())) {
 				if (ImGui::Selectable(opt.name.c_str())) {
 					node.option[idx] = opt.defaultValue;
+					optHook(activeNode, idx, opt.defaultValue);
 					searchFilter.Clear();
 					CloseCurrentPopup();
 				}
@@ -399,14 +417,14 @@ void NodeEditor::draw() {
 	ImGui::End();
 }
 
-void to_json(nlohmann::json& j, const NodeId& id) { j = id.val; }
+static void to_json(nlohmann::json& j, const NodeId& id) { j = id.val; }
 
 bool NodeEditor::save(const std::filesystem::path& path) const {
 	nlohmann::json obj;
 	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
 		nlohmann::json elem;
 		elem["id"] = id;
-		elem["name"] = node.base().name;
+		elem["name"] = node.name;
 		const auto& options = node.base().options;
 		for (auto& [optIdx, optValue] : node.option) {
 			nlohmann::json opt;
@@ -442,12 +460,12 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			[&](const Filter& filter) { return filter.name == name; });
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;
-		for (const auto& [sNid, sId] : std::views::zip(
+		for (const auto& [sNid, sId] : ranges::zip_view(
 				 g.getNode(nId).inputSocketIds,
 				 elem["inputs"].template get<std::vector<int>>())) {
 			mapping[sId] = sNid;
 		}
-		for (const auto& [sNid, sId] : std::views::zip(
+		for (const auto& [sNid, sId] : ranges::zip_view(
 				 g.getNode(nId).outputSocketIds,
 				 elem["outputs"].template get<std::vector<int>>())) {
 			mapping[sId] = sNid;

@@ -1,11 +1,24 @@
 #pragma once
 
-#include <algorithm>
+#include <map>
+#include <set>
 #include <type_traits>
+#include <vector>
 
-template <class T, class E> auto contains(T& t, E const& e) {
-	if constexpr (requires { t.find(e); })
-		return t.find(e) != t.cend();
-	else
-		return std::find(t.cbegin(), t.cend(), e) != t.cend();
+template <typename E, typename... T>
+auto contains(const std::set<T...>& c, const E& e) {
+	return c.find(e) != c.end();
+}
+
+template <typename E, typename... T>
+auto contains(const std::map<T...>& c, const E& e) {
+	return c.find(e) != c.end();
+}
+template <typename C, typename E> auto contains(const C& c, const E& e) {
+	return std::find(c.begin(), c.end(), e) != c.end();
+}
+
+template <class T, class E> auto erase(T& c, const E& e) {
+	auto itr = std::remove(c.begin(), c.end(), e);
+	if (itr != c.end()) { c.erase(itr, c.end()); }
 }

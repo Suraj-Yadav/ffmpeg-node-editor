@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-enum SocketType { Video, Audio };
+enum SocketType { Video, Audio, Subtitle };
 
 struct Socket {
 	std::string name;
@@ -31,4 +31,9 @@ struct Filter {
 	std::vector<Socket> input;
 	std::vector<Socket> output;
 	std::vector<Option> options;
+	bool dynamicInput;
+	bool dynamicOutput;
 };
+
+const auto INPUT_FILTER_NAME = "input";
+const auto OUTPUT_FILTER_NAME = "output";

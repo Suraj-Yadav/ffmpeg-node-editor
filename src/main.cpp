@@ -8,16 +8,16 @@
 #include <vector>
 
 #include "backend.hpp"
+#include "ffmpeg/profile.hpp"
 #include "node_editor.hpp"
 
 int main() {
-	GraphState state;
 	std::set_terminate([]() {
 		auto excPtr = std::current_exception();
 		try {
 			if (excPtr) { std::rethrow_exception(excPtr); }
 		} catch (const std::exception& e) {
-			spdlog::critical("Unhandled exception {}\n", e.what());
+			SPDLOG_CRITICAL("Unhandled exception {}\n", e.what());
 		}
 		std::abort();
 	});
@@ -72,9 +72,9 @@ int main() {
 						}
 						free(outPath);
 					} else if (result == NFD_CANCEL) {
-						spdlog::info("User pressed cancel");
+						SPDLOG_INFO("User pressed cancel");
 					} else {
-						spdlog::error("Error: {}", NFD_GetError());
+						SPDLOG_ERROR("Error: {}", NFD_GetError());
 					}
 				}
 				ImGui::EndMenu();

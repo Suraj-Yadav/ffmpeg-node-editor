@@ -15,9 +15,10 @@ class Runner {
    public:
 	Runner(std::filesystem::path p) : path(p) {}
 	int lineScanner(
-		std::vector<std::string> args, LineScannerCallback cb) const;
+		std::vector<std::string> args, LineScannerCallback cb,
+		bool readStdErr = false) const;
 
 	std::pair<int, std::string> play(
-		absl::string_view filter,
+		const std::vector<std::string>& inputs, absl::string_view filter,
 		const std::vector<std::string>& outputs) const;
 };

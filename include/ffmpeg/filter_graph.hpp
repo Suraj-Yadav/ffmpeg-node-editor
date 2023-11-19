@@ -8,13 +8,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
-#include "ffmpeg/filter_node.hpp"
-#include "ffmpeg/profile.hpp"
 #include "filter_node.hpp"
 
 enum NodeIterOrder { Default, Topological };
+
+class Profile;
 
 using EdgeIterCallback =
 	std::function<void(const LinkId& id, const NodeId& u, const NodeId& v)>;
@@ -50,6 +49,10 @@ class FilterGraph {
 	void deleteLink(LinkId id);
 	bool canAddLink(NodeId u, NodeId v) const;
 	const LinkId addLink(NodeId u, NodeId v);
+
+	void optHook(
+		const Profile* profile, const NodeId& id, const int& optId,
+		const std::string& value);
 
 	void iterateNodes(
 		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default,

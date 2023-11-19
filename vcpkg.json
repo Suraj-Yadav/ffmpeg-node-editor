@@ -14,6 +14,7 @@
         "imgui-node-editor",
         "nativefiledialog",
         "nlohmann-json",
+        "range-v3",
         "re2",
         "spdlog",
         "tiny-process-library"
