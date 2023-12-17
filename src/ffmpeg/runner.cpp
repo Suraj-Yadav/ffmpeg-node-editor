@@ -5,9 +5,11 @@
 #include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <future>
 #include <process.hpp>
+#include <thread>
 namespace {
 	void reader(
 		TinyProcessLib::Process* cmd, bool& running,
@@ -84,9 +86,7 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	for (auto& o : outputs) { args.insert(args.end(), {"-map", o}); }
-	args.insert(
-		args.end(), {"-c", "copy", "-movflags", "frag_keyframe+faststart",
-					 tempfile.string()});
+	args.insert(args.end(), {tempfile.string()});
 
 	fmt::memory_buffer std_err;
 
@@ -94,6 +94,8 @@ std::pair<int, std::string> Runner::play(
 		args, "", nullptr,
 		[&](const char* bytes, size_t n) { std_err.append(bytes, bytes + n); },
 		true);
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	TinyProcessLib::Process process2(
 		std::vector<std::string>{"mpvnet", tempfile.string()});

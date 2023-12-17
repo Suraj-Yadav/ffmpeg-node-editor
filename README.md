@@ -3,7 +3,7 @@ blah blah blah
 
 ## Features
 * ~~Run any node in filter graph~~
-* ~~Load/Save filtergraps~~
+* ~~Load/Save filtergraphs~~
 * Export bash/batch scripts to run ffmpeg commands
 * Support for dynamic nodes
 * Automatic layout
