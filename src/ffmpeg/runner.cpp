@@ -4,11 +4,10 @@
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
+#include <atomic>
+#include <filesystem>
 #include <future>
 #include <process.hpp>
-
-#include "ffmpeg/filter.hpp"
-
 namespace {
 	void reader(
 		TinyProcessLib::Process* cmd, bool& running,
@@ -37,6 +36,9 @@ namespace {
 		}
 	}
 
+	const int PID = _getpid();
+	std::atomic_int filename_index = 0;
+
 }  // namespace
 int Runner::lineScanner(
 	std::vector<std::string> args, LineScannerCallback cb,
@@ -64,8 +66,12 @@ int Runner::lineScanner(
 std::pair<int, std::string> Runner::play(
 	const std::vector<std::string>& inputs, absl::string_view filter,
 	const std::vector<std::string>& outputs) const {
-	TinyProcessLib::Process process2(
-		std::vector<std::string>{"mpvnet", "-"}, "", nullptr, nullptr, true);
+	const auto tempfile =
+		std::filesystem::temp_directory_path() / "ffmpeg_node_editor" /
+		fmt::format("temp{}.mkv", PID * 1000 + (++filename_index));
+
+	std::filesystem::create_directories(tempfile.parent_path());
+
 	std::vector<std::string> args{"ffmpeg", "-hide_banner"};
 	if (inputs.empty()) {
 		args.insert(args.end(), {"-f", "lavfi", "-i", "nullsrc"});
@@ -78,17 +84,19 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	for (auto& o : outputs) { args.insert(args.end(), {"-map", o}); }
-	args.insert(args.end(), {"-f", "matroska", "-"});
+	args.insert(
+		args.end(), {"-c", "copy", "-movflags", "frag_keyframe+faststart",
+					 tempfile.string()});
 
 	fmt::memory_buffer std_err;
 
-	SPDLOG_INFO("command: {}", args);
-
 	TinyProcessLib::Process process1(
-		args, "",
-		[&](const char* bytes, size_t n) { process2.write(bytes, n); },
+		args, "", nullptr,
 		[&](const char* bytes, size_t n) { std_err.append(bytes, bytes + n); },
 		true);
+
+	TinyProcessLib::Process process2(
+		std::vector<std::string>{"mpvnet", tempfile.string()});
 
 	auto status1 = 0, status2 = 0;
 	auto f = std::async([&]() {
@@ -101,6 +109,9 @@ std::pair<int, std::string> Runner::play(
 	SPDLOG_INFO("waiting for ffmpeg process");
 	status1 = process1.get_exit_status();
 	SPDLOG_INFO("ffmpeg process exited with status {}", status1);
+	if (status1 != 0) {
+		SPDLOG_ERROR("ffmpeg stderr: {}", fmt::to_string(std_err));
+	}
 	if (!process2.try_get_exit_status(status2)) {
 		process2.close_stdin();
 		if (status1 != 0) {
@@ -111,5 +122,7 @@ std::pair<int, std::string> Runner::play(
 	SPDLOG_INFO("waiting for player process to finish");
 	f.wait();
 	SPDLOG_INFO("done waiting for player process");
-	return {status1 + status2, fmt::to_string(std_err)};
+
+	std::filesystem::remove(tempfile);
+	return {status1, fmt::to_string(std_err)};
 }
