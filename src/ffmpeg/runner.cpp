@@ -90,41 +90,38 @@ std::pair<int, std::string> Runner::play(
 
 	fmt::memory_buffer std_err;
 
-	TinyProcessLib::Process process1(
+	TinyProcessLib::Process ffmpeg(
 		args, "", nullptr,
 		[&](const char* bytes, size_t n) { std_err.append(bytes, bytes + n); },
 		true);
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	auto ffmpeg_status = 0, player_status = 0;
 
-	TinyProcessLib::Process process2(
-		std::vector<std::string>{"mpvnet", tempfile.string()});
+	while (!std::filesystem::exists(tempfile) ||
+		   std::filesystem::file_size(tempfile) == 0) {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		if (ffmpeg.try_get_exit_status(ffmpeg_status)) { break; }
+	}
 
-	auto status1 = 0, status2 = 0;
-	auto f = std::async([&]() {
-		SPDLOG_INFO("waiting for player process");
-		status2 = process2.get_exit_status();
-		SPDLOG_INFO("player process exited with status {}", status2);
-		process1.write("q");
-		SPDLOG_INFO("Asked ffmpeg process to quit");
-	});
+	if (!ffmpeg.try_get_exit_status(ffmpeg_status)) {
+		TinyProcessLib::Process player(
+			std::vector<std::string>{"mpvnet", tempfile.string()});
+		auto f = std::async([&]() {
+			SPDLOG_INFO("waiting for player process");
+			player_status = player.get_exit_status();
+			SPDLOG_INFO("player process exited with status {}", player_status);
+			ffmpeg.write("q");
+			SPDLOG_INFO("Asked ffmpeg process to quit");
+		});
+	}
+
 	SPDLOG_INFO("waiting for ffmpeg process");
-	status1 = process1.get_exit_status();
-	SPDLOG_INFO("ffmpeg process exited with status {}", status1);
-	if (status1 != 0) {
+	ffmpeg_status = ffmpeg.get_exit_status();
+	SPDLOG_INFO("ffmpeg process exited with status {}", ffmpeg_status);
+	if (ffmpeg_status != 0) {
 		SPDLOG_ERROR("ffmpeg stderr: {}", fmt::to_string(std_err));
 	}
-	if (!process2.try_get_exit_status(status2)) {
-		process2.close_stdin();
-		if (status1 != 0) {
-			process2.kill(true);
-			SPDLOG_INFO("killed player process");
-		}
-	}
-	SPDLOG_INFO("waiting for player process to finish");
-	f.wait();
-	SPDLOG_INFO("done waiting for player process");
 
 	std::filesystem::remove(tempfile);
-	return {status1, fmt::to_string(std_err)};
+	return {ffmpeg_status, fmt::to_string(std_err)};
 }

@@ -30,7 +30,7 @@ NodeEditor::NodeEditor(const Profile* p, const std::string& n)
 NodeEditor::~NodeEditor() {}
 
 const auto POPUP_MISSING_INPUT = "Missing Input";
-const auto POPUP_PLAY_ERROR = "Player Error";
+const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
 const auto POPUP_ADD_OPT = "Select Option";
 
 #define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
@@ -119,7 +119,7 @@ void NodeEditor::play(const NodeId& id) {
 		int status = 0;
 		std::tie(status, popupString) =
 			profile->runner.play(inputs, fmt::to_string(buff), out);
-		if (status != 0) { popup = POPUP_PLAY_ERROR; }
+		if (status != 0) { popup = POPUP_PREVIEW_ERROR; }
 	}
 }
 
@@ -264,7 +264,7 @@ void NodeEditor::popups() {
 		ImGui::OpenPopup(popup.data());
 		popup = {};
 	}
-	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PLAY_ERROR}) {
+	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PREVIEW_ERROR}) {
 		if (ImGui::BeginPopupModal(
 				p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Text("%s", popupString.c_str());
