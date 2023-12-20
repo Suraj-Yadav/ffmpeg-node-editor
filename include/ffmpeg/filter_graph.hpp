@@ -4,11 +4,8 @@
 #include <vcruntime.h>
 
 #include <functional>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
-#include "ffmpeg/filter_graph.hpp"
 #include "filter_node.hpp"
 
 enum NodeIterOrder { Default, Topological };

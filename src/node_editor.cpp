@@ -1,6 +1,8 @@
 #include "node_editor.hpp"
 
 #include <fmt/format.h>
+#include <imgui-node-editor/imgui_node_editor.h>
+#include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/spdlog.h>
 
@@ -31,7 +33,7 @@ NodeEditor::~NodeEditor() {}
 
 const auto POPUP_MISSING_INPUT = "Missing Input";
 const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
-const auto POPUP_ADD_OPT = "Select Option";
+const auto POPUP_NODE_OPTIONS = "Node Options";
 
 #define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
 #define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
@@ -130,7 +132,6 @@ void NodeEditor::optHook(
 
 void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	const auto nodeId = id.val;
-	auto maxTextWidth = 0.0f;
 	ed::BeginNode(nodeId);
 
 	const auto& style = ed::GetStyle();
@@ -141,24 +142,19 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	const auto nSize = ed::GetNodeSize(nodeId);
 	const auto nPos = ed::GetNodePosition(nodeId);
 
-	PushRightEdge(nSize.x - lPad - rPad - 2 * borderW);
+	BeginVertical(&node);
 
-	PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
-	PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
-	PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
-	PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
-	PushID(PLAY_BUTTON_ID(nodeId));
-	if (ArrowButton("", ImGuiDir_Right)) { play(id); }
-	PopID();
-	PopStyleColor(4);
-	SameLine();
-	AlignedText(node.name, TextAlign::AlignCenter, &maxTextWidth);
+	BeginHorizontal(&nodeId);
+	Spring();
+	Text("%s", node.name.data());
+	Spring();
+	EndHorizontal();
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
 
 #define DRAW_INPUT_SOCKET(SOCKET, ID)                             \
 	ed::BeginPin((ID), ed::PinKind::Input);                       \
-	AlignedText((SOCKET).name, &maxTextWidth);                    \
+	Text("%s", (SOCKET).name.data());                             \
 	pins.emplace_back(                                            \
 		GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0), \
 		IM_COL(255, 0, 0));                                       \
@@ -169,7 +165,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 #define DRAW_OUTPUT_SOCKET(SOCKET, ID)                            \
 	ed::BeginPin((ID), ed::PinKind::Output);                      \
-	AlignedText((SOCKET).name, ImGui::AlignRight, &maxTextWidth); \
+	Text("%s", (SOCKET).name.data());                             \
 	pins.emplace_back(                                            \
 		GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0), \
 		IM_COL(0, 255, 0));                                       \
@@ -183,9 +179,11 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 		for (const auto& [in, inID, out, outID] : views::zip(
 				 node.input(), node.inputSocketIds, node.output(),
 				 node.outputSocketIds)) {
+			BeginHorizontal(&inID.val);
 			DRAW_INPUT_SOCKET(in, inID.val);
-			ImGui::SameLine();
+			Spring();
 			DRAW_OUTPUT_SOCKET(out, outID.val);
+			EndHorizontal();
 		}
 		const auto commonCnt =
 			std::min(node.input().size(), node.output().size());
@@ -199,7 +197,10 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 		for (const auto& [out, outID] :
 			 views::zip(node.output(), node.outputSocketIds) |
 				 views::drop(commonCnt)) {
+			BeginHorizontal(&outID.val);
+			Spring();
 			DRAW_OUTPUT_SOCKET(out, outID.val);
+			EndHorizontal();
 		}
 	}
 
@@ -207,19 +208,21 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 		PushID(OPT_ID(nodeId));
 		{
 			const auto& options = node.base().options;
+			auto maxTextWidth = ImGui::CalcTextSize(node.name.c_str()).x;
 			for (const auto& [idx, _] : node.option) {
 				maxTextWidth = std::max(
 					maxTextWidth,
 					ImGui::CalcTextSize(options[idx].name.c_str()).x);
 			}
 			for (auto& [optIdx, optValue] : g.getNode(id).option) {
-				AlignedText(options[optIdx].name, &maxTextWidth);
+				BeginHorizontal(optIdx);
+				Text("%s", options[optIdx].name.data());
+				Spring();
 				ed::Suspend();
 				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
 					ImGui::SetTooltip("%s", options[optIdx].desc.data());
 				}
 				ed::Resume();
-				SameLine(maxTextWidth);
 				PushItemWidth(maxTextWidth);
 				PushID(optIdx);
 				if (ImGui::InputText(
@@ -228,30 +231,20 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 				}
 				PopID();
 				PopItemWidth();
+				EndHorizontal();
 			}
 		}
 		PopID();
 	}
 
-	if (node.option.size() < node.base().options.size()) {
-		PushID(OPT_BUTTON_ID(nodeId));
-		{
-			if (ImGui::Button("+")) {
-				popup = POPUP_ADD_OPT;
-				activeNode = id;
-			}
-		}
-		PopID();
-	}
-
-	PopRightEdge();
+	EndVertical();
 	ed::EndNode();
 
 	const auto list = ed::GetNodeBackgroundDrawList(nodeId);
 	ImGui::AddRoundedFilledRect(
 		list, nPos + ImVec2(borderW / 2, borderW / 2),
 		nPos + ImVec2(nSize.x - borderW / 2, GetFrameHeightWithSpacing()),
-		style.NodeRounding, ImColor(255, 0, 0),
+		style.NodeRounding, IM_COL(255, 0, 0),
 		Corner_TopLeft | Corner_TopRight);
 
 	for (auto& pin : pins) {
@@ -272,27 +265,49 @@ void NodeEditor::popups() {
 			ImGui::EndPopup();
 		}
 	}
-	if (ImGui::BeginPopup(POPUP_ADD_OPT)) {
-		if (searchStarted) {
-			searchStarted = false;
-			ImGui::SetKeyboardFocusHere();
-		}
-
-		searchFilter.Draw(" ");
+	if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
 		auto& node = g.getNode(activeNode);
-		for (const auto& [index, opt] : views::enumerate(node.base().options)) {
-			const auto idx = int(index);
-			if (contains(node.option, idx)) { continue; }
-			if (searchFilter.PassFilter(opt.name.c_str()) ||
-				searchFilter.PassFilter(opt.desc.c_str())) {
-				if (ImGui::Selectable(opt.name.c_str())) {
-					node.option[idx] = opt.defaultValue;
-					optHook(activeNode, idx, opt.defaultValue);
-					searchFilter.Clear();
-					CloseCurrentPopup();
+		if (Selectable("Play till this node")) {
+			CloseCurrentPopup();
+			play(activeNode);
+		}
+		// SameLine();
+		// ImGui::Text("Play till this node");
+		// PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
+		// PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
+		// PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
+		// PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
+		// SPDLOG_INFO("GetStyle().ItemSpacing.x: {}",
+		// GetStyle().ItemSpacing.x); SameLine(); ArrowButton("",
+		// ImGuiDir_Right); PopID(); PopStyleColor(4);
+
+		if (node.option.size() < node.base().options.size()) {
+			if (ImGui::BeginMenu("Add options")) {
+				if (searchStarted) {
+					searchStarted = false;
+					ImGui::SetKeyboardFocusHere();
 				}
-				ImGui::SameLine();
-				ImGui::Text("- %s", opt.desc.c_str());
+				searchFilter.Draw(" ");
+				int count = 0;
+				for (const auto& [index, opt] :
+					 views::enumerate(node.base().options)) {
+					const auto idx = int(index);
+					if (contains(node.option, idx)) { continue; }
+					if (searchFilter.PassFilter(opt.name.c_str()) ||
+						searchFilter.PassFilter(opt.desc.c_str())) {
+						count++;
+						if (MenuItem(opt.name.c_str())) {
+							node.option[idx] = opt.defaultValue;
+							optHook(activeNode, idx, opt.defaultValue);
+							searchFilter.Clear();
+							CloseCurrentPopup();
+						}
+						ImGui::SameLine();
+						ImGui::Text(": %s", opt.desc.c_str());
+					}
+					if (count >= 5) { break; }
+				}
+				ImGui::EndMenu();
 			}
 		}
 		ImGui::EndPopup();
@@ -304,7 +319,7 @@ void NodeEditor::popups() {
 void NodeEditor::searchBar() {
 	const auto POP_UP_ID = "add_node_popup";
 	if (ImGui::IsWindowHovered() && !ImGui::IsPopupOpen(POP_UP_ID) &&
-		ImGui::IsKeyPressed(ImGuiKey_Space, false) && profile != nullptr) {
+		ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
 		ImGui::OpenPopup(POP_UP_ID);
 		searchStarted = true;
 	}
@@ -343,6 +358,12 @@ void NodeEditor::draw() {
 		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
 			ed::Link(id.val, s.val, d.val);
 		});
+
+		ed::NodeId contextNodeId;
+		if (ed::ShowNodeContextMenu(&contextNodeId)) {
+			popup = POPUP_NODE_OPTIONS;
+			activeNode = {contextNodeId.Get()};
+		}
 
 		if (ed::BeginCreate()) {
 			ed::PinId inputPinId, outputPinId;

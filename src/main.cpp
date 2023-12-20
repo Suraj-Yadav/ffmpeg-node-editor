@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <iostream>
 #include <vector>
 
 #include "backend.hpp"

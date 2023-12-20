@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ffmpeg/filter_node.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <absl/strings/string_view.h>

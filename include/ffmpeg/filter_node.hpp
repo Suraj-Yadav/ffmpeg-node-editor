@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "ffmpeg/filter.hpp"
-#include "ffmpeg/filter_node.hpp"
 
 #define STRONG_TYPEDEF(NEW_TYPE, ORIG_TYPE)                                   \
 	struct NEW_TYPE {                                                         \
