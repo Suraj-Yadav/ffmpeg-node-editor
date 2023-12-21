@@ -1,5 +1,4 @@
 #include <imgui.h>
-#include <nfd.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -8,6 +7,7 @@
 
 #include "backend.hpp"
 #include "ffmpeg/profile.hpp"
+#include "file_utils.hpp"
 #include "node_editor.hpp"
 
 int main() {
@@ -54,26 +54,22 @@ int main() {
 					untitledCount++;
 				}
 				if (ImGui::MenuItem("Open..", "CTRL+O")) {
-					nfdchar_t* outPath = NULL;
-					nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
-					if (result == NFD_OKAY) {
+					auto path = openFile();
+					if (path.has_value()) {
 						auto itr = std::find_if(
 							editors.begin(), editors.end(), [&](const auto& e) {
 								return std::filesystem::equivalent(
-									e.getPath(), outPath);
+									e.getPath(), path.value());
 							});
 						if (itr == editors.end()) {
 							NodeEditor e(&profile, possibleName);
-							if (e.load(outPath)) { editors.push_back(e); }
+							if (e.load(path.value())) { editors.push_back(e); }
 
 						} else {
 							ImGui::SetWindowFocus(itr->getName().c_str());
 						}
-						free(outPath);
-					} else if (result == NFD_CANCEL) {
-						SPDLOG_INFO("User pressed cancel");
 					} else {
-						SPDLOG_ERROR("Error: {}", NFD_GetError());
+						SPDLOG_INFO("User pressed cancel");
 					}
 				}
 				ImGui::EndMenu();
