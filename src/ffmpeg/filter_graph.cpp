@@ -1,6 +1,10 @@
 #include "ffmpeg/filter_graph.hpp"
 
 #include <absl/strings/match.h>
+#include <fmt/format.h>
+#include <spdlog/spdlog.h>
+
+#include <range/v3/view.hpp>
 
 #include "ffmpeg/profile.hpp"
 #include "ffmpeg/runner.hpp"
@@ -157,12 +161,11 @@ namespace {
 }  // namespace
 
 void FilterGraph::optHook(
-	const Profile* profile, const NodeId& id, const int& optId,
-	const std::string& value) {
+	const NodeId& id, const int& optId, const std::string& value) {
 	auto& node = getNode(id);
 	const auto& base = node.base();
 	if (base.name == INPUT_FILTER_NAME && base.options[optId].name == "path") {
-		auto newSockets = getMediaInfo(profile->runner, value);
+		auto newSockets = getMediaInfo(profile.runner, value);
 
 		auto nodeVertexId = getU(id);
 		auto nodeIndex = state.vertIdToNodeIndex[nodeVertexId];
@@ -277,4 +280,101 @@ const FilterNode& FilterGraph::getNode(NodeId id) const {
 }
 FilterNode& FilterGraph::getNode(NodeId id) {
 	return nodes[state.vertIdToNodeIndex[getU(id)]];
+}
+
+FilterGraphError FilterGraph::play(const NodeId& id) {
+	namespace views = ranges::views;
+
+	FilterGraphError err{NO_ERROR};
+
+	fmt::memory_buffer buff;
+	std::vector<std::string> inputs;
+	std::map<IdBaseType, std::string> inputSocketNames;
+	std::map<IdBaseType, std::string> outputSocketNames;
+	iterateNodes(
+		[&](const FilterNode& node, const NodeId& id) {
+			auto idx = inputs.size();
+			if (err.code != NO_ERROR) { return; }
+			auto isInput = node.base().name == INPUT_FILTER_NAME;
+			inputSockets(
+				id, [&](const Socket& s, const NodeId& sId,
+						const NodeId& parentSocketId) {
+					if (err.code != NO_ERROR) { return; }
+					if (parentSocketId == INVALID_NODE) {
+						err.code = PLAYER_MISSING_INPUT;
+						err.message = fmt::format(
+							"Socket {} of node {} needs an input", s.name,
+							node.name);
+						return;
+					}
+					outputSocketNames.erase(parentSocketId.val);
+					fmt::format_to(
+						std::back_inserter(buff), "{}",
+						inputSocketNames[parentSocketId.val]);
+				});
+			if (err.code != NO_ERROR) { return; }
+			if (isInput) {
+				inputs.push_back(node.option.at(0));
+			} else {
+				fmt::format_to(
+					std::back_inserter(buff), "{}@{}{}", node.name, node.name,
+					id.val);
+
+				const auto& options = node.base().options;
+				for (const auto& [i, opt] : views::enumerate(node.option)) {
+					const auto& optId = opt.first;
+					const auto& optValue = opt.second;
+					if (i == 0) {
+						buff.push_back('=');
+					} else {
+						buff.push_back(':');
+					}
+					fmt::format_to(
+						std::back_inserter(buff), "{}={}",
+						options[optId].name.data(), optValue);
+				}
+			}
+
+			auto socketIdx = 0;
+			outputSockets(id, [&](const Socket&, const NodeId& socketId) {
+				if (isInput) {
+					// outputSocketNames[socketId.val] =
+					// 	fmt::format("{}:{}", idx, socketIdx);
+					inputSocketNames[socketId.val] =
+						fmt::format("[{}:{}]", idx, socketIdx);
+					socketIdx++;
+					return;
+				} else {
+					inputSocketNames[socketId.val] =
+						fmt::format("[s{}]", socketId.val);
+					outputSocketNames[socketId.val] =
+						fmt::format("[s{}]", socketId.val);
+					fmt::format_to(
+						std::back_inserter(buff),
+						inputSocketNames[socketId.val]);
+				}
+			});
+			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
+		},
+		NodeIterOrder::Topological, id);
+	if (err.code != NO_ERROR) { return err; }
+	std::vector<std::string> out;
+	for (auto& e : outputSocketNames) {
+		out.push_back(fmt::format("{}", e.second));
+	}
+	SPDLOG_INFO(fmt::to_string(buff));
+	int status = 0;
+	std::tie(status, err.message) =
+		profile.runner.play(inputs, fmt::to_string(buff), out);
+	if (status != 0) { err.code = PLAYER_RUNTIME; }
+	return err;
+}
+
+const std::vector<Filter>& FilterGraph::allFilters() const {
+	return profile.filters;
+}
+
+void FilterGraph::clear() {
+	nodes.clear();
+	state = GraphState{};
 }

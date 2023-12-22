@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ffmpeg/filter_node.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <absl/strings/string_view.h>
@@ -12,10 +11,28 @@
 
 #include "ffmpeg/filter_graph.hpp"
 
+class FilterNode;
+class Profile;
+
+enum StyleColor {
+	NodeHeader = 0,
+	NodeBg,
+	Border,
+	Wire,
+	VideoSocket,
+	AudioSocket,
+	SubtitleSocket,
+	COUNT
+};
+
+struct Style {
+	ImVec4 colors[StyleColor::COUNT];
+	Style();
+};
+
 class NodeEditor {
-	std::shared_ptr<ax::NodeEditor::EditorContext> context;
 	FilterGraph g;
-	const Profile* profile;
+	std::shared_ptr<ax::NodeEditor::EditorContext> context;
 
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
@@ -24,22 +41,19 @@ class NodeEditor {
 	std::string popupString;
 	NodeId activeNode;
 
-	void drawNode(const FilterNode& node, const NodeId& id);
+	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
 	void searchBar();
 	void popups();
-	void optHook(const NodeId& id, const int& optId, const std::string& value);
 
 	std::string name;
 	std::filesystem::path path;
 
    public:
-	NodeEditor(const Profile* p, const std::string& n);
+	NodeEditor(const Profile& p, const std::string& n);
 	~NodeEditor();
 	const std::string getName() const;
 	const std::filesystem::path& getPath() const;
-	void draw();
-	void addNode(const Filter& filter) { g.addNode(filter); }
-	void play(const NodeId& id = INVALID_NODE);
+	void draw(const Style& style);
 	bool save(const std::filesystem::path& path) const;
 	bool load(const std::filesystem::path& path);
 };

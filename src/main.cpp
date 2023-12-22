@@ -43,6 +43,8 @@ int main() {
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
 
+	Style style;
+
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
 		// Menu Bar
@@ -50,7 +52,7 @@ int main() {
 			if (ImGui::BeginMenu("File")) {
 				auto possibleName = fmt::format("Untitled {}", untitledCount);
 				if (ImGui::MenuItem("New", "CTRL+N")) {
-					editors.emplace_back(&profile, possibleName);
+					editors.emplace_back(profile, possibleName);
 					untitledCount++;
 				}
 				if (ImGui::MenuItem("Open..", "CTRL+O")) {
@@ -62,9 +64,8 @@ int main() {
 									e.getPath(), path.value());
 							});
 						if (itr == editors.end()) {
-							NodeEditor e(&profile, possibleName);
+							NodeEditor e(profile, possibleName);
 							if (e.load(path.value())) { editors.push_back(e); }
-
 						} else {
 							ImGui::SetWindowFocus(itr->getName().c_str());
 						}
@@ -77,7 +78,7 @@ int main() {
 			ImGui::EndMainMenuBar();
 		}
 
-		for (auto& editor : editors) { editor.draw(); }
+		for (auto& editor : editors) { editor.draw(style); }
 
 		// Rendering
 		backend.Render(clear_color);

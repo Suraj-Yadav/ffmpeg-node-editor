@@ -1,5 +1,7 @@
 #include <imgui.h>
 
+#include <string>
+
 namespace ImGui {
 
 	inline ImVec2 GetItemRectPoint(float wx = 0, float wy = 0) {
@@ -18,5 +20,7 @@ namespace ImGui {
 		const ImColor& col,
 		int corners = Corner_TopLeft | Corner_TopRight | Corner_BottomRight |
 					  Corner_BottomLeft);
+
+	inline void Text(const std::string& str) { Text("%s", str.c_str()); }
 
 }  // namespace ImGui

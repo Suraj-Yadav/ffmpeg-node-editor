@@ -105,7 +105,7 @@ std::pair<int, std::string> Runner::play(
 
 	if (!ffmpeg.try_get_exit_status(ffmpeg_status)) {
 		TinyProcessLib::Process player(
-			std::vector<std::string>{"mpvnet", tempfile.string()});
+			std::vector<std::string>{"vlc", tempfile.string()});
 		auto f = std::async([&]() {
 			SPDLOG_INFO("waiting for player process");
 			player_status = player.get_exit_status();

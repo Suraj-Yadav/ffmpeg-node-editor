@@ -1,6 +1,5 @@
 #include "node_editor.hpp"
 
-#include <fmt/format.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -10,19 +9,29 @@
 #include <nlohmann/json.hpp>
 #include <range/v3/view.hpp>
 
+#include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/profile.hpp"
 #include "imgui_extras.hpp"
 #include "util.hpp"
 
-#define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
-
-namespace views = ranges::views;
+// #define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
 
 using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
-NodeEditor::NodeEditor(const Profile* p, const std::string& n)
-	: profile(p), popup(""), name(n) {
+Style::Style() {
+	ed::Style v;
+	colors[NodeHeader] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
+	colors[NodeBg] = v.Colors[ed::StyleColor_NodeBg];
+	colors[Border] = v.Colors[ed::StyleColor_NodeBorder];
+	// colors[Wire] = v.Colors[ed::StyleColor_];
+	colors[VideoSocket] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
+	colors[AudioSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 255, 0, 255));
+	colors[SubtitleSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 0, 255, 255));
+}
+
+NodeEditor::NodeEditor(const Profile& p, const std::string& n)
+	: g(p), popup(""), name(n) {
 	ed::Config config;
 	config.SettingsFile = nullptr;
 	context = std::shared_ptr<ed::EditorContext>(
@@ -39,105 +48,15 @@ const auto POPUP_NODE_OPTIONS = "Node Options";
 #define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
 #define OPT_ID(X)		  int(((X) << 4) + 3)
 
-void NodeEditor::play(const NodeId& id) {
-	bool invalid = false;
-	fmt::memory_buffer buff;
-	std::vector<std::string> inputs;
-	std::map<IdBaseType, std::string> inputSocketNames;
-	std::map<IdBaseType, std::string> outputSocketNames;
-	g.iterateNodes(
-		[&](const FilterNode& node, const NodeId& id) {
-			auto idx = inputs.size();
-			if (invalid) { return; }
-			auto isInput = node.base().name == INPUT_FILTER_NAME;
-			g.inputSockets(
-				id, [&](const Socket& s, const NodeId& sId,
-						const NodeId& parentSocketId) {
-					if (invalid) { return; }
-					if (parentSocketId == INVALID_NODE) {
-						invalid = true;
-						popup = POPUP_MISSING_INPUT;
-						popupString = fmt::format(
-							"Socket {} of node {} needs an input", s.name,
-							node.name);
-						return;
-					}
-					outputSocketNames.erase(parentSocketId.val);
-					fmt::format_to(
-						std::back_inserter(buff), "{}",
-						inputSocketNames[parentSocketId.val]);
-				});
-			if (invalid) { return; }
-			if (isInput) {
-				inputs.push_back(node.option.at(0));
-			} else {
-				fmt::format_to(
-					std::back_inserter(buff), "{}@{}{}", node.name, node.name,
-					id.val);
-
-				const auto& options = node.base().options;
-				for (const auto& [i, opt] : views::enumerate(node.option)) {
-					const auto& optId = opt.first;
-					const auto& optValue = opt.second;
-					if (i == 0) {
-						buff.push_back('=');
-					} else {
-						buff.push_back(':');
-					}
-					fmt::format_to(
-						std::back_inserter(buff), "{}={}",
-						options[optId].name.data(), optValue);
-				}
-			}
-
-			auto socketIdx = 0;
-			g.outputSockets(id, [&](const Socket&, const NodeId& socketId) {
-				if (isInput) {
-					// outputSocketNames[socketId.val] =
-					// 	fmt::format("{}:{}", idx, socketIdx);
-					inputSocketNames[socketId.val] =
-						fmt::format("[{}:{}]", idx, socketIdx);
-					socketIdx++;
-					return;
-				} else {
-					inputSocketNames[socketId.val] =
-						fmt::format("[s{}]", socketId.val);
-					outputSocketNames[socketId.val] =
-						fmt::format("[s{}]", socketId.val);
-					fmt::format_to(
-						std::back_inserter(buff),
-						inputSocketNames[socketId.val]);
-				}
-			});
-			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
-		},
-		NodeIterOrder::Topological, id);
-	if (!invalid) {
-		std::vector<std::string> out;
-		for (auto& e : outputSocketNames) {
-			out.push_back(fmt::format("{}", e.second));
-		}
-		SPDLOG_INFO(fmt::to_string(buff));
-		int status = 0;
-		std::tie(status, popupString) =
-			profile->runner.play(inputs, fmt::to_string(buff), out);
-		if (status != 0) { popup = POPUP_PREVIEW_ERROR; }
-	}
-}
-
-void NodeEditor::optHook(
-	const NodeId& id, const int& optId, const std::string& value) {
-	g.optHook(profile, id, optId, value);
-}
-
-void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
+void NodeEditor::drawNode(
+	const Style& style, const FilterNode& node, const NodeId& id) {
 	const auto nodeId = id.val;
 	ed::BeginNode(nodeId);
 
-	const auto& style = ed::GetStyle();
-	const auto lPad = style.NodePadding.x;
-	const auto rPad = style.NodePadding.z;
-	const auto borderW = style.NodeBorderWidth;
+	const auto& nodeStyle = ed::GetStyle();
+	const auto lPad = nodeStyle.NodePadding.x;
+	const auto rPad = nodeStyle.NodePadding.z;
+	const auto borderW = nodeStyle.NodeBorderWidth;
 	const float pinRadius = 5;
 	const auto nSize = ed::GetNodeSize(nodeId);
 	const auto nPos = ed::GetNodePosition(nodeId);
@@ -146,7 +65,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 	BeginHorizontal(&nodeId);
 	Spring();
-	Text("%s", node.name.data());
+	Text(node.name);
 	Spring();
 	EndHorizontal();
 
@@ -154,10 +73,10 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 #define DRAW_INPUT_SOCKET(SOCKET, ID)                             \
 	ed::BeginPin((ID), ed::PinKind::Input);                       \
-	Text("%s", (SOCKET).name.data());                             \
+	Text((SOCKET).name);                                          \
 	pins.emplace_back(                                            \
 		GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0), \
-		IM_COL(255, 0, 0));                                       \
+		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
 	ed::PinRect(                                                  \
 		pins.back().first - ImVec2(pinRadius, pinRadius),         \
 		pins.back().first + ImVec2(pinRadius, pinRadius));        \
@@ -165,14 +84,16 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 
 #define DRAW_OUTPUT_SOCKET(SOCKET, ID)                            \
 	ed::BeginPin((ID), ed::PinKind::Output);                      \
-	Text("%s", (SOCKET).name.data());                             \
+	Text((SOCKET).name);                                          \
 	pins.emplace_back(                                            \
 		GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0), \
-		IM_COL(0, 255, 0));                                       \
+		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
 	ed::PinRect(                                                  \
 		pins.back().first - ImVec2(pinRadius, pinRadius),         \
 		pins.back().first + ImVec2(pinRadius, pinRadius));        \
 	ed::EndPin();
+
+	namespace views = ranges::views;
 
 	{
 		// Both
@@ -216,7 +137,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 			}
 			for (auto& [optIdx, optValue] : g.getNode(id).option) {
 				BeginHorizontal(optIdx);
-				Text("%s", options[optIdx].name.data());
+				Text(options[optIdx].name);
 				Spring();
 				ed::Suspend();
 				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
@@ -227,7 +148,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 				PushID(optIdx);
 				if (ImGui::InputText(
 						"", &optValue, ImGuiInputTextFlags_EnterReturnsTrue)) {
-					optHook(id, optIdx, optValue);
+					g.optHook(id, optIdx, optValue);
 				}
 				PopID();
 				PopItemWidth();
@@ -244,7 +165,7 @@ void NodeEditor::drawNode(const FilterNode& node, const NodeId& id) {
 	ImGui::AddRoundedFilledRect(
 		list, nPos + ImVec2(borderW / 2, borderW / 2),
 		nPos + ImVec2(nSize.x - borderW / 2, GetFrameHeightWithSpacing()),
-		style.NodeRounding, IM_COL(255, 0, 0),
+		nodeStyle.NodeRounding, style.colors[StyleColor::NodeHeader],
 		Corner_TopLeft | Corner_TopRight);
 
 	for (auto& pin : pins) {
@@ -260,7 +181,7 @@ void NodeEditor::popups() {
 	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PREVIEW_ERROR}) {
 		if (ImGui::BeginPopupModal(
 				p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::Text("%s", popupString.c_str());
+			ImGui::Text(popupString);
 			if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
 			ImGui::EndPopup();
 		}
@@ -269,7 +190,14 @@ void NodeEditor::popups() {
 		auto& node = g.getNode(activeNode);
 		if (Selectable("Play till this node")) {
 			CloseCurrentPopup();
-			play(activeNode);
+			auto err = g.play(activeNode);
+			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
+				popup = POPUP_MISSING_INPUT;
+				popupString = err.message;
+			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
+				popup = POPUP_PREVIEW_ERROR;
+				popupString = err.message;
+			}
 		}
 		// SameLine();
 		// ImGui::Text("Play till this node");
@@ -289,6 +217,7 @@ void NodeEditor::popups() {
 				}
 				searchFilter.Draw(" ");
 				int count = 0;
+				namespace views = ranges::views;
 				for (const auto& [index, opt] :
 					 views::enumerate(node.base().options)) {
 					const auto idx = int(index);
@@ -298,12 +227,12 @@ void NodeEditor::popups() {
 						count++;
 						if (MenuItem(opt.name.c_str())) {
 							node.option[idx] = opt.defaultValue;
-							optHook(activeNode, idx, opt.defaultValue);
+							g.optHook(activeNode, idx, opt.defaultValue);
 							searchFilter.Clear();
 							CloseCurrentPopup();
 						}
 						ImGui::SameLine();
-						ImGui::Text(": %s", opt.desc.c_str());
+						ImGui::Text(opt.desc);
 					}
 					if (count >= 5) { break; }
 				}
@@ -330,10 +259,10 @@ void NodeEditor::searchBar() {
 			ImGui::SetKeyboardFocusHere();
 		}
 		searchFilter.Draw(" ");
-		for (auto& f : profile->filters) {
+		for (auto& f : g.allFilters()) {
 			if (searchFilter.PassFilter(f.name.c_str())) {
 				if (ImGui::Selectable(f.name.c_str())) {
-					addNode(f);
+					g.addNode(f);
 					searchFilter.Clear();
 					CloseCurrentPopup();
 				}
@@ -346,13 +275,13 @@ void NodeEditor::searchBar() {
 	}
 }
 
-void NodeEditor::draw() {
+void NodeEditor::draw(const Style& style) {
 	if (ImGui::Begin(getName().c_str())) {
 		ed::SetCurrentEditor(context.get());
 		ed::Begin(getName().c_str());
 
-		g.iterateNodes([this](const FilterNode& node, const NodeId& id) {
-			drawNode(node, id);
+		g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
+			drawNode(style, node, id);
 		});
 
 		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
@@ -471,13 +400,13 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 	try {
 		json = nlohmann::json::parse(std::ifstream(path));
 	} catch (nlohmann::json::exception&) { return false; }
-	g = FilterGraph();
+	g.clear();
 	std::map<int, NodeId> mapping;
 	for (const auto& elem : json["nodes"]) {
 		auto id = elem["id"].template get<int>();
 		auto name = elem["name"].template get<std::string>();
 		const auto& base = std::find_if(
-			profile->filters.begin(), profile->filters.end(),
+			g.allFilters().begin(), g.allFilters().end(),
 			[&](const Filter& filter) { return filter.name == name; });
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;

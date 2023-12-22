@@ -4,7 +4,6 @@
 
 #include <filesystem>
 #include <functional>
-#include <string_view>
 #include <vector>
 
 using LineScannerCallback = std::function<bool(absl::string_view line)>;
