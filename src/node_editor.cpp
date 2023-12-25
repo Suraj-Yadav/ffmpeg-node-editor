@@ -1,5 +1,6 @@
 #include "node_editor.hpp"
 
+#include <absl/strings/match.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -7,19 +8,21 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <range/v3/view.hpp>
 
+#include "extras/IconsFontAwesome6.h"
+#include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
+#include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
+#include "file_utils.hpp"
 #include "imgui_extras.hpp"
 #include "util.hpp"
 
-// #define IM_COL(R, G, B) IM_COL32(R, G, B, 255)
-
-using namespace ImGui;
 namespace ed = ax::NodeEditor;
 
 Style::Style() {
+	using namespace ImGui;
+
 	ed::Style v;
 	colors[NodeHeader] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
 	colors[NodeBg] = v.Colors[ed::StyleColor_NodeBg];
@@ -31,7 +34,7 @@ Style::Style() {
 }
 
 NodeEditor::NodeEditor(const Profile& p, const std::string& n)
-	: g(p), popup(""), name(n) {
+	: g(p), popup({""}), name(n) {
 	ed::Config config;
 	config.SettingsFile = nullptr;
 	context = std::shared_ptr<ed::EditorContext>(
@@ -43,13 +46,62 @@ NodeEditor::~NodeEditor() {}
 const auto POPUP_MISSING_INPUT = "Missing Input";
 const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
 const auto POPUP_NODE_OPTIONS = "Node Options";
+const auto POPUP_OPTION_COMPLETION = "Completion";
 
 #define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
 #define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
 #define OPT_ID(X)		  int(((X) << 4) + 3)
 
+bool drawOption(
+	const NodeId& id, const Option& option, int optId, std::string& value,
+	const float& width, Popup& popup) {
+	using namespace ImGui;
+
+	bool changed = false;
+	BeginHorizontal(option.name.data());
+	Text(option.name);
+	ed::Suspend();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+		ImGui::SetTooltip("%s", option.desc.data());
+	}
+	ed::Resume();
+	Spring();
+
+	PushItemWidth(width);
+	PushID(option.name.c_str());
+	if (option.allowed.size() > 0) {
+		changed = InputText("", &value, ImGuiInputTextFlags_EnterReturnsTrue);
+		if (IsItemActivated()) {
+			popup.type = POPUP_OPTION_COMPLETION;
+			popup.nodeId = id;
+			popup.optId = optId;
+			popup.isInputTextActive = IsItemActive();
+			popup.isInputTextEnterPressed = changed;
+			popup.position = ed::CanvasToScreen(GetItemRectPoint(0, 1));
+		}
+	} else {
+		changed = ImGui::InputText("", &value);
+		if (absl::EndsWith(option.name, "path")) {
+			Spring(0, 0);
+			if (Button(ICON_FA_FOLDER_OPEN)) {
+				auto path = openFile();
+				if (path.has_value()) {
+					value = path->string();
+					changed = true;
+				}
+			}
+		}
+	}
+	PopID();
+	PopItemWidth();
+	EndHorizontal();
+	return changed;
+}
+
 void NodeEditor::drawNode(
 	const Style& style, const FilterNode& node, const NodeId& id) {
+	using namespace ImGui;
+
 	const auto nodeId = id.val;
 	ed::BeginNode(nodeId);
 
@@ -93,31 +145,30 @@ void NodeEditor::drawNode(
 		pins.back().first + ImVec2(pinRadius, pinRadius));        \
 	ed::EndPin();
 
-	namespace views = ranges::views;
-
 	{
 		// Both
-		for (const auto& [in, inID, out, outID] : views::zip(
-				 node.input(), node.inputSocketIds, node.output(),
-				 node.outputSocketIds)) {
+		const auto limit = std::min(node.input().size(), node.output().size());
+		for (auto i = 0u; i < limit; ++i) {
+			const auto& in = node.input()[i];
+			const auto& inID = node.inputSocketIds[i];
+			const auto& out = node.output()[i];
+			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&inID.val);
 			DRAW_INPUT_SOCKET(in, inID.val);
 			Spring();
 			DRAW_OUTPUT_SOCKET(out, outID.val);
 			EndHorizontal();
 		}
-		const auto commonCnt =
-			std::min(node.input().size(), node.output().size());
 		// Only input
-		for (const auto& [in, inID] :
-			 views::zip(node.input(), node.inputSocketIds) |
-				 views::drop(commonCnt)) {
+		for (auto i = limit; i < node.input().size(); ++i) {
+			const auto& in = node.input()[i];
+			const auto& inID = node.inputSocketIds[i];
 			DRAW_INPUT_SOCKET(in, inID.val);
 		}
 		// Only output
-		for (const auto& [out, outID] :
-			 views::zip(node.output(), node.outputSocketIds) |
-				 views::drop(commonCnt)) {
+		for (auto i = limit; i < node.output().size(); ++i) {
+			const auto& out = node.output()[i];
+			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&outID.val);
 			Spring();
 			DRAW_OUTPUT_SOCKET(out, outID.val);
@@ -136,23 +187,11 @@ void NodeEditor::drawNode(
 					ImGui::CalcTextSize(options[idx].name.c_str()).x);
 			}
 			for (auto& [optIdx, optValue] : g.getNode(id).option) {
-				BeginHorizontal(optIdx);
-				Text(options[optIdx].name);
-				Spring();
-				ed::Suspend();
-				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-					ImGui::SetTooltip("%s", options[optIdx].desc.data());
-				}
-				ed::Resume();
-				PushItemWidth(maxTextWidth);
-				PushID(optIdx);
-				if (ImGui::InputText(
-						"", &optValue, ImGuiInputTextFlags_EnterReturnsTrue)) {
+				if (drawOption(
+						id, options[optIdx], optIdx, optValue, maxTextWidth,
+						popup)) {
 					g.optHook(id, optIdx, optValue);
 				}
-				PopID();
-				PopItemWidth();
-				EndHorizontal();
 			}
 		}
 		PopID();
@@ -162,11 +201,11 @@ void NodeEditor::drawNode(
 	ed::EndNode();
 
 	const auto list = ed::GetNodeBackgroundDrawList(nodeId);
-	ImGui::AddRoundedFilledRect(
-		list, nPos + ImVec2(borderW / 2, borderW / 2),
+	list->AddRectFilled(
+		nPos + ImVec2(borderW / 2, borderW / 2),
 		nPos + ImVec2(nSize.x - borderW / 2, GetFrameHeightWithSpacing()),
-		nodeStyle.NodeRounding, style.colors[StyleColor::NodeHeader],
-		Corner_TopLeft | Corner_TopRight);
+		ImColor(style.colors[StyleColor::NodeHeader]), nodeStyle.NodeRounding,
+		ImDrawFlags_RoundCornersTop);
 
 	for (auto& pin : pins) {
 		list->AddCircleFilled(pin.first, pinRadius, pin.second);
@@ -174,29 +213,30 @@ void NodeEditor::drawNode(
 }
 
 void NodeEditor::popups() {
-	if (popup.size() > 0) {
-		ImGui::OpenPopup(popup.data());
-		popup = {};
+	using namespace ImGui;
+
+	if (!popup.type.empty()) {
+		ImGui::OpenPopup(popup.type.data());
+		popup.type = {};
 	}
 	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PREVIEW_ERROR}) {
-		if (ImGui::BeginPopupModal(
-				p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::Text(popupString);
-			if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
-			ImGui::EndPopup();
+		if (BeginPopupModal(p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+			Text(popup.msg);
+			if (Button("Ok")) { CloseCurrentPopup(); }
+			EndPopup();
 		}
 	}
-	if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
-		auto& node = g.getNode(activeNode);
+	if (BeginPopup(POPUP_NODE_OPTIONS)) {
+		auto& node = g.getNode(popup.nodeId);
 		if (Selectable("Play till this node")) {
 			CloseCurrentPopup();
-			auto err = g.play(activeNode);
+			auto err = g.play(popup.nodeId);
 			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
-				popup = POPUP_MISSING_INPUT;
-				popupString = err.message;
+				popup.type = POPUP_MISSING_INPUT;
+				popup.msg = err.message;
 			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
-				popup = POPUP_PREVIEW_ERROR;
-				popupString = err.message;
+				popup.type = POPUP_PREVIEW_ERROR;
+				popup.msg = err.message;
 			}
 		}
 		// SameLine();
@@ -210,42 +250,73 @@ void NodeEditor::popups() {
 		// ImGuiDir_Right); PopID(); PopStyleColor(4);
 
 		if (node.option.size() < node.base().options.size()) {
-			if (ImGui::BeginMenu("Add options")) {
+			if (BeginMenu("Add options")) {
 				if (searchStarted) {
 					searchStarted = false;
-					ImGui::SetKeyboardFocusHere();
+					SetKeyboardFocusHere();
 				}
 				searchFilter.Draw(" ");
 				int count = 0;
-				namespace views = ranges::views;
-				for (const auto& [index, opt] :
-					 views::enumerate(node.base().options)) {
-					const auto idx = int(index);
+				int idx = -1;
+				for (const auto& opt : node.base().options) {
+					idx++;
 					if (contains(node.option, idx)) { continue; }
 					if (searchFilter.PassFilter(opt.name.c_str()) ||
 						searchFilter.PassFilter(opt.desc.c_str())) {
 						count++;
 						if (MenuItem(opt.name.c_str())) {
 							node.option[idx] = opt.defaultValue;
-							g.optHook(activeNode, idx, opt.defaultValue);
+							g.optHook(popup.nodeId, idx, opt.defaultValue);
 							searchFilter.Clear();
 							CloseCurrentPopup();
 						}
-						ImGui::SameLine();
-						ImGui::Text(opt.desc);
+						SameLine();
+						Text(opt.desc);
 					}
 					if (count >= 5) { break; }
 				}
-				ImGui::EndMenu();
+				EndMenu();
 			}
 		}
-		ImGui::EndPopup();
+		EndPopup();
+	} else if (
+		SetNextWindowPos(popup.position),
+		SetNextWindowSize({0, GetFrameHeightWithSpacing() * 5}),
+		BeginPopup(
+			POPUP_OPTION_COMPLETION,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
+		auto& node = g.getNode(popup.nodeId);
+		const auto& option = node.base().options[popup.optId];
+		auto& value = node.option[popup.optId];
+
+		for (auto& elem : option.allowed) {
+			if (absl::StrContainsIgnoreCase(elem.value, value) ||
+				absl::StrContainsIgnoreCase(elem.desc, value)) {
+				if (Selectable(elem.value.c_str())) {
+					node.option[popup.optId] = elem.value;
+				}
+				SameLine();
+				Text(elem.desc);
+			}
+		}
+
+		if (popup.isInputTextEnterPressed ||
+			(!popup.isInputTextActive && !IsWindowFocused()))
+			CloseCurrentPopup();
+
+		EndPopup();
+
+		popup.isInputTextActive = false;
+		popup.isInputTextEnterPressed = false;
 	} else {
-		activeNode = INVALID_NODE;
+		popup.nodeId = INVALID_NODE;
 	}
 }
 
 void NodeEditor::searchBar() {
+	using namespace ImGui;
+
 	const auto POP_UP_ID = "add_node_popup";
 	if (ImGui::IsWindowHovered() && !ImGui::IsPopupOpen(POP_UP_ID) &&
 		ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
@@ -290,8 +361,8 @@ void NodeEditor::draw(const Style& style) {
 
 		ed::NodeId contextNodeId;
 		if (ed::ShowNodeContextMenu(&contextNodeId)) {
-			popup = POPUP_NODE_OPTIONS;
-			activeNode = {contextNodeId.Get()};
+			popup.type = POPUP_NODE_OPTIONS;
+			popup.nodeId = {contextNodeId.Get()};
 		}
 
 		if (ed::BeginCreate()) {
@@ -367,7 +438,11 @@ void NodeEditor::draw(const Style& style) {
 	ImGui::End();
 }
 
-static void to_json(nlohmann::json& j, const NodeId& id) { j = id.val; }
+namespace nlohmann {
+	template <> struct adl_serializer<NodeId> {
+		static void to_json(nlohmann::json& j, const NodeId& id) { j = id.val; }
+	};
+}  // namespace nlohmann
 
 bool NodeEditor::save(const std::filesystem::path& path) const {
 	nlohmann::json obj;
@@ -410,15 +485,18 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			[&](const Filter& filter) { return filter.name == name; });
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;
-		for (const auto& [sNid, sId] : ranges::zip_view(
-				 g.getNode(nId).inputSocketIds,
-				 elem["inputs"].template get<std::vector<int>>())) {
-			mapping[sId] = sNid;
+
+		{
+			const auto& skts = g.getNode(nId).inputSocketIds;
+			const auto& ints = elem["inputs"].template get<std::vector<int>>();
+			const auto limit = std::min(skts.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
 		}
-		for (const auto& [sNid, sId] : ranges::zip_view(
-				 g.getNode(nId).outputSocketIds,
-				 elem["outputs"].template get<std::vector<int>>())) {
-			mapping[sId] = sNid;
+		{
+			const auto& skts = g.getNode(nId).outputSocketIds;
+			const auto& ints = elem["outputs"].template get<std::vector<int>>();
+			const auto limit = std::min(skts.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
 		}
 		if (elem.find("edges") != elem.end()) {
 			for (const auto& edge : elem["edges"]) {

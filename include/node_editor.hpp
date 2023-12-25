@@ -30,6 +30,16 @@ struct Style {
 	Style();
 };
 
+struct Popup {
+	absl::string_view type;
+	std::string msg;
+	NodeId nodeId;
+	int optId;
+	bool isInputTextActive;
+	bool isInputTextEnterPressed;
+	ImVec2 position;
+};
+
 class NodeEditor {
 	FilterGraph g;
 	std::shared_ptr<ax::NodeEditor::EditorContext> context;
@@ -37,9 +47,7 @@ class NodeEditor {
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
 
-	absl::string_view popup;
-	std::string popupString;
-	NodeId activeNode;
+	Popup popup;
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
 	void searchBar();

@@ -4,8 +4,6 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
-#include <range/v3/view.hpp>
-
 #include "ffmpeg/profile.hpp"
 #include "ffmpeg/runner.hpp"
 #include "util.hpp"
@@ -283,8 +281,6 @@ FilterNode& FilterGraph::getNode(NodeId id) {
 }
 
 FilterGraphError FilterGraph::play(const NodeId& id) {
-	namespace views = ranges::views;
-
 	FilterGraphError err{NO_ERROR};
 
 	fmt::memory_buffer buff;
@@ -321,14 +317,14 @@ FilterGraphError FilterGraph::play(const NodeId& id) {
 					id.val);
 
 				const auto& options = node.base().options;
-				for (const auto& [i, opt] : views::enumerate(node.option)) {
-					const auto& optId = opt.first;
-					const auto& optValue = opt.second;
-					if (i == 0) {
+				bool first = true;
+				for (const auto& [optId, optValue] : node.option) {
+					if (first) {
 						buff.push_back('=');
 					} else {
 						buff.push_back(':');
 					}
+					first = false;
 					fmt::format_to(
 						std::back_inserter(buff), "{}={}",
 						options[optId].name.data(), optValue);

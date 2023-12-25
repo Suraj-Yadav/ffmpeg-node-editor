@@ -2,13 +2,18 @@
 
 #include <absl/strings/ascii.h>
 #include <absl/strings/match.h>
+#include <absl/strings/string_view.h>
 #include <absl/strings/strip.h>
 #include <re2/re2.h>
+#include <spdlog/spdlog.h>
 
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <string>
+#include <utility>
 
+#include "ffmpeg/filter.hpp"
 #include "util.hpp"
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -287,7 +292,8 @@ Profile GetProfile() {
 	try {
 		auto json = nlohmann::json::parse(std::ifstream("filters.json"));
 		profile.filters = json.template get<std::vector<Filter>>();
-	} catch (nlohmann::json::exception&) {
+	} catch (nlohmann::json::exception& e) {
+		SPDLOG_ERROR("parse error: {}", e.what());
 		FilterParser p;
 		runner.lineScanner(
 			{"-filters"}, [&runner, &p, &profile](absl::string_view line) {
