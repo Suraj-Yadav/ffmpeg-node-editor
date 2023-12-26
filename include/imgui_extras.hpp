@@ -1,3 +1,4 @@
+#include <absl/strings/string_view.h>
 #include <imgui.h>
 
 #include <string>
@@ -11,5 +12,8 @@ namespace ImGui {
 	}
 
 	inline void Text(const std::string& str) { Text("%s", str.c_str()); }
+
+	ImU32 ColorConvertHexToU32(absl::string_view hex);
+	std::string ColorConvertU32ToHex(ImU32);
 
 }  // namespace ImGui

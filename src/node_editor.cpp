@@ -47,6 +47,7 @@ const auto POPUP_MISSING_INPUT = "Missing Input";
 const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
 const auto POPUP_NODE_OPTIONS = "Node Options";
 const auto POPUP_OPTION_COMPLETION = "Completion";
+const auto POPUP_OPTION_COLOR = "Color";
 
 #define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
 #define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
@@ -89,6 +90,16 @@ bool drawOption(
 					value = path->string();
 					changed = true;
 				}
+			}
+		} else if (option.type == "boolean") {
+			bool v = value == "1";
+			if (Checkbox("##b", &v)) { value = v ? "1" : "0"; }
+		} else if (option.type == "color") {
+			auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
+			if (ColorButton("##col", color, ImGuiColorEditFlags_NoTooltip)) {
+				popup.type = POPUP_OPTION_COLOR;
+				popup.nodeId = id;
+				popup.optId = optId;
 			}
 		}
 	}
@@ -309,6 +320,18 @@ void NodeEditor::popups() {
 
 		popup.isInputTextActive = false;
 		popup.isInputTextEnterPressed = false;
+	} else if (BeginPopup(POPUP_OPTION_COLOR)) {
+		auto& node = g.getNode(popup.nodeId);
+		auto& value = node.option[popup.optId];
+		auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
+		if (ColorPicker4(
+				"##col", &color.x,
+				ImGuiColorEditFlags_PickerHueWheel |
+					ImGuiColorEditFlags_AlphaBar |
+					ImGuiColorEditFlags_AlphaPreviewHalf)) {
+			value = ColorConvertU32ToHex(ColorConvertFloat4ToU32(color));
+		}
+		EndPopup();
 	} else {
 		popup.nodeId = INVALID_NODE;
 	}

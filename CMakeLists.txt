@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-set(VCPKG_OVERLAY_PORTS "./overlays" CACHE INTERNAL "")
+set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/overlays" CACHE INTERNAL "")
 project(ffmpeg_node_editor LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -39,4 +39,18 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     tiny-process-library::tiny-process-library 
     unofficial::imgui-node-editor::imgui-node-editor 
     unofficial::nativefiledialog::nfd
+    )
+    
+    
+# Setup Test, coverage and benchmarks
+find_package(GTest CONFIG REQUIRED)
+
+SET(TEST_SRCS
+src/imgui_extras.cpp
+src/imgui_extras_test.cpp
 )
+
+add_executable(tests ${TEST_SRCS})
+target_include_directories(tests PUBLIC "${CMAKE_SOURCE_DIR}/include")
+target_link_libraries(tests PRIVATE GTest::gtest GTest::gtest_main absl::strings imgui::imgui spdlog::spdlog)
+
