@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <future>
 #include <process.hpp>
 #include <thread>
@@ -68,11 +69,12 @@ int Runner::lineScanner(
 std::pair<int, std::string> Runner::play(
 	const std::vector<std::string>& inputs, absl::string_view filter,
 	const std::vector<std::string>& outputs) const {
-	const auto tempfile =
+	const auto tempPath =
 		std::filesystem::temp_directory_path() / "ffmpeg_node_editor" /
 		fmt::format("temp{}.mkv", PID * 1000 + (++filename_index));
 
-	std::filesystem::create_directories(tempfile.parent_path());
+	std::filesystem::create_directories(tempPath.parent_path());
+	std::ofstream tempfile(tempPath, std::ios::binary);
 
 	std::vector<std::string> args{"ffmpeg", "-hide_banner"};
 	if (inputs.empty()) {
@@ -86,26 +88,27 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	for (auto& o : outputs) { args.insert(args.end(), {"-map", o}); }
-	args.insert(args.end(), {tempfile.string()});
+	args.insert(args.end(), {"-f", "matroska", "-"});
 
 	fmt::memory_buffer std_err;
 
 	TinyProcessLib::Process ffmpeg(
-		args, "", nullptr,
+		args, "",
+		[&](const char* bytes, size_t n) { tempfile.write(bytes, n); },
 		[&](const char* bytes, size_t n) { std_err.append(bytes, bytes + n); },
 		true);
 
 	auto ffmpeg_status = 0, player_status = 0;
 
-	while (!std::filesystem::exists(tempfile) ||
-		   std::filesystem::file_size(tempfile) == 0) {
+	while (!std::filesystem::exists(tempPath) ||
+		   std::filesystem::file_size(tempPath) == 0) {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		if (ffmpeg.try_get_exit_status(ffmpeg_status)) { break; }
 	}
 
 	if (!ffmpeg.try_get_exit_status(ffmpeg_status)) {
 		TinyProcessLib::Process player(
-			std::vector<std::string>{"vlc", tempfile.string()});
+			std::vector<std::string>{"vlc", tempPath.string()});
 		auto f = std::async([&]() {
 			SPDLOG_INFO("waiting for player process");
 			player_status = player.get_exit_status();
@@ -120,8 +123,11 @@ std::pair<int, std::string> Runner::play(
 	SPDLOG_INFO("ffmpeg process exited with status {}", ffmpeg_status);
 	if (ffmpeg_status != 0) {
 		SPDLOG_ERROR("ffmpeg stderr: {}", fmt::to_string(std_err));
+		SPDLOG_ERROR("ffmpeg args: {}", fmt::join(args, " "));
 	}
 
-	std::filesystem::remove(tempfile);
+	tempfile.flush();
+	tempfile.close();
+	std::filesystem::remove(tempPath);
 	return {ffmpeg_status, fmt::to_string(std_err)};
 }

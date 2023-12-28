@@ -82,7 +82,8 @@ bool drawOption(
 		}
 	} else {
 		changed = ImGui::InputText("", &value);
-		if (absl::EndsWith(option.name, "path")) {
+		if (absl::EndsWithIgnoreCase(option.name, "path") ||
+			absl::EndsWithIgnoreCase(option.name, "file")) {
 			Spring(0, 0);
 			if (Button(ICON_FA_FOLDER_OPEN)) {
 				auto path = openFile();

@@ -29,7 +29,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AllowedValues, value, desc);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
 	Option, name, desc, type, defaultValue, min, max, allowed);
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Filter, name, desc, input, output, options);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+	Filter, name, desc, input, output, options, dynamicInput, dynamicOutput);
 
 namespace {
 
@@ -171,7 +172,12 @@ class FilterParser {
 
 	bool parseSocket(absl::string_view text) {
 		absl::string_view name, type;
-		if (isNoneSocket(text) || isDynamicSocket(text)) {
+		if (isNoneSocket(text)) { return true; }
+		if (isDynamicSocket(text)) {
+			if (stack.checkParent(isInput) == 0) { filter.dynamicInput = true; }
+			if (stack.checkParent(isOutput) == 0) {
+				filter.dynamicOutput = true;
+			}
 			return true;
 		} else if (re2::RE2::PartialMatch(text, *SOCKET_REGEX, &name, &type)) {
 		} else {
@@ -211,6 +217,10 @@ class FilterParser {
 			std::string(absl::StripSuffix(absl::StripPrefix(type, "<"), ">"))};
 		if (re2::RE2::PartialMatch(desc, *OPTION_DEFAULT_REGEX, &a, &b)) {
 			desc = a;
+			if (b.front() == '"' && b.back() == '"') {
+				b.remove_prefix(1);
+				b.remove_suffix(1);
+			}
 			opt.defaultValue = std::string(b);
 		}
 		if (re2::RE2::PartialMatch(desc, *OPTION_RANGE_REGEX, &desc, &a, &b)) {

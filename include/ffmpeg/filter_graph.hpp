@@ -30,7 +30,7 @@ struct GraphState {
 	std::vector<bool> isInput;
 	std::vector<size_t> vertIdToNodeIndex;
 	std::vector<size_t> vertIdToSocketIndex;
-	// std::vector<std::vector<size_t>> adjList;
+	std::vector<std::vector<size_t>> adjList;
 	std::vector<std::vector<size_t>> revAdjList;
 };
 

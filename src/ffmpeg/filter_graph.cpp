@@ -44,7 +44,7 @@ namespace {
 		GraphState& state, size_t nodeIndex, bool isSocket, size_t socketIndex,
 		bool isInput) {
 		auto id = state.revAdjList.size();
-		// state.adjList.emplace_back();
+		state.adjList.emplace_back(0);
 		state.revAdjList.emplace_back(0);
 		state.vertIdToNodeIndex.emplace_back(nodeIndex);
 		state.valid.emplace_back(true);
@@ -76,14 +76,18 @@ namespace {
 	bool addEdge(GraphState& state, IdBaseType u, IdBaseType v) {
 		if (contains(state.revAdjList[v], u)) { return false; }
 		state.revAdjList[v].push_back(u);
+		state.adjList[u].push_back(v);
 		return true;
 	}
 
 	void deleteEdge(GraphState& state, IdBaseType u, IdBaseType v) {
 		erase(state.revAdjList[v], u);
+		erase(state.adjList[u], v);
 	}
 
 	void deleteVertex(GraphState& state, IdBaseType u) {
+		for (auto& v : state.adjList[u]) { deleteEdge(state, u, v); }
+		for (auto& v : state.revAdjList[u]) { deleteEdge(state, v, u); }
 		state.valid[u] = false;
 	}
 	std::vector<Socket> getMediaInfo(const Runner& r, const std::string& path) {
@@ -189,6 +193,13 @@ const NodeId FilterGraph::addNode(const Filter& filter) {
 		state, nodeIndex, nodeVertexId, filter.output, {},
 		nodes.back().outputSocketIds, false);
 
+	for (int i = 0; i < filter.options.size(); ++i) {
+		if (filter.options[i].name == filter.name) {
+			nodes.back().option[i] = filter.options[i].defaultValue;
+			optHook(getNodeId(nodeVertexId), i, filter.options[i].defaultValue);
+			break;
+		}
+	}
 	return getNodeId(nodeVertexId);
 }
 
