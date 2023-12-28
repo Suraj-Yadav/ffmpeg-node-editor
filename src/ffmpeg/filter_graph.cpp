@@ -1,11 +1,21 @@
 #include "ffmpeg/filter_graph.hpp"
 
+#include <absl/strings/ascii.h>
 #include <absl/strings/match.h>
+#include <absl/strings/numbers.h>
+#include <absl/strings/string_view.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cctype>
+#include <optional>
+#include <vector>
+
+#include "ffmpeg/filter.hpp"
 #include "ffmpeg/profile.hpp"
 #include "ffmpeg/runner.hpp"
+#include "node_editor.hpp"
 #include "util.hpp"
 
 const int LINK_ID_SHIFT = std::numeric_limits<IdBaseType>::digits / 2;
@@ -162,20 +172,77 @@ namespace {
 	}
 }  // namespace
 
+std::vector<Socket> getNewSockets(unsigned int count, SocketType type) {
+	return std::vector<Socket>(count, {"", type});
+}
+std::vector<Socket> getNewSockets(unsigned int count, absl::string_view name) {
+	if (name[0] == 'a') { return std::vector<Socket>(count, {"", Audio}); }
+	return std::vector<Socket>(count, {"", Video});
+}
+
 void FilterGraph::optHook(
 	const NodeId& id, const int& optId, const std::string& value) {
 	auto& node = getNode(id);
 	const auto& base = node.base();
-	if (base.name == INPUT_FILTER_NAME && base.options[optId].name == "path") {
-		auto newSockets = getMediaInfo(profile.runner, value);
+	const auto& option = base.options[optId];
+	auto nodeVertexId = getU(id);
+	auto nodeIndex = state.vertIdToNodeIndex[nodeVertexId];
 
-		auto nodeVertexId = getU(id);
-		auto nodeIndex = state.vertIdToNodeIndex[nodeVertexId];
+	std::optional<std::vector<Socket>> newInputs, newOutputs;
 
+	if (base.name == INPUT_FILTER_NAME && option.name == "path") {
+		newOutputs = getMediaInfo(profile.runner, value);
+	} else if (base.name == "acrossover" && option.name == "split") {
+		auto count = 1u;
+		char last = '\0';
+		for (auto& ch : absl::StripAsciiWhitespace(value)) {
+			if (std::isspace(ch) && !std::isspace(last)) { count++; }
+			last = ch;
+		}
+		if (count != node.output().size()) {
+			newOutputs = getNewSockets(count, SocketType::Audio);
+		}
+	} else if (
+		(base.name == "ainterleave" || base.name == "interleave") &&
+		(option.name == "nb_inputs" || option.name == "n")) {
+		int count;
+		if (absl::SimpleAtoi(value, &count)) {
+			newInputs = getNewSockets(count, base.name);
+		}
+	} else if (
+		(base.name == "amerge" || base.name == "amix") &&
+		option.name == "inputs") {
+		int count;
+		if (absl::SimpleAtoi(value, &count)) {
+			newInputs = getNewSockets(count, SocketType::Audio);
+		}
+	} else if (
+		(base.name == "asegment" || base.name == "segment") &&
+		(option.name == "timestamps")) {
+		auto count = std::count(value.begin(), value.end(), '|') + 1;
+		if (count != node.output().size()) {
+			newOutputs = getNewSockets(count, base.name);
+		}
+	} else if (
+		(base.name == "aselect" || base.name == "asplit" ||
+		 base.name == "split") &&
+		(option.name == "outputs" || option.name == "n")) {
+		int count;
+		if (absl::SimpleAtoi(value, &count)) {
+			newOutputs = getNewSockets(count, base.name);
+		}
+	}
+	if (newInputs.has_value()) {
 		updateSocketsIds(
-			state, nodeIndex, nodeVertexId, newSockets, node.output(),
+			state, nodeIndex, nodeVertexId, newInputs.value(), node.input(),
+			node.inputSocketIds, true);
+		node.inputSockets = newInputs.value();
+	}
+	if (newOutputs.has_value()) {
+		updateSocketsIds(
+			state, nodeIndex, nodeVertexId, newOutputs.value(), node.output(),
 			node.outputSocketIds, false);
-		node.outputSockets = newSockets;
+		node.outputSockets = newOutputs.value();
 	}
 }
 
