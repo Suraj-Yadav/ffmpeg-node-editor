@@ -1,10 +1,11 @@
 # ffmpeg-node-editor
-blah blah blah
+A simple node editor over ffmpeg's filter_complex.
 
 ## Features
-* ~~Run any node in filter graph~~
-* ~~Load/Save filtergraphs~~
-* Support for dynamic nodes
+* Run any node in filter graph
+* Load/Save filtergraphs
+* Support for dynamic nodes (mostly)
+## Planned Features
 * Export bash/batch scripts to run ffmpeg commands
 * Automatic layout
 * Parse ffmpeg input
