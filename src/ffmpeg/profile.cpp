@@ -289,10 +289,10 @@ class FilterParser {
 };
 
 const std::vector<Option> InputNodeOptions = {
-	{"path", "path to input", "string"},
+	{"filename", "path to input", "string"},
 };
 const std::vector<Option> OutputNodeOptions = {
-	{"path", "path to output", "string"},
+	{"filename", "path to output", "string"},
 };
 
 Profile GetProfile() {

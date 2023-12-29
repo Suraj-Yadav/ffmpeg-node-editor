@@ -96,8 +96,13 @@ namespace {
 	}
 
 	void deleteVertex(GraphState& state, IdBaseType u) {
-		for (auto& v : state.adjList[u]) { deleteEdge(state, u, v); }
-		for (auto& v : state.revAdjList[u]) { deleteEdge(state, v, u); }
+		if (state.vertIdToNodeIndex[u] == u) {
+			for (auto& v : state.adjList[u]) { deleteVertex(state, v); }
+			for (auto& v : state.revAdjList[u]) { deleteVertex(state, v); }
+		} else {
+			for (auto& v : state.adjList[u]) { deleteEdge(state, u, v); }
+			for (auto& v : state.revAdjList[u]) { deleteEdge(state, v, u); }
+		}
 		state.valid[u] = false;
 	}
 	std::vector<Socket> getMediaInfo(const Runner& r, const std::string& path) {
@@ -170,15 +175,35 @@ namespace {
 		if (state.isSocket[v]) { return; }
 		cb(nodes[state.vertIdToNodeIndex[v]], getNodeId(v));
 	}
-}  // namespace
 
-std::vector<Socket> getNewSockets(unsigned int count, SocketType type) {
-	return std::vector<Socket>(count, {"", type});
-}
-std::vector<Socket> getNewSockets(unsigned int count, absl::string_view name) {
-	if (name[0] == 'a') { return std::vector<Socket>(count, {"", Audio}); }
-	return std::vector<Socket>(count, {"", Video});
-}
+	std::vector<Socket> getNewSockets(unsigned int count, SocketType type) {
+		return std::vector<Socket>(count, {"", type});
+	}
+
+	std::vector<Socket> getNewSockets(
+		std::initializer_list<int> counts,
+		std::initializer_list<SocketType> types) {
+		auto i = counts.begin();
+		auto j = types.begin();
+		std::vector<Socket> ret;
+		for (; i != counts.end() && j != types.end(); i++, j++) {
+			ret.insert(ret.end(), *i, {"", *j});
+		}
+		return ret;
+	}
+	std::vector<Socket> getNewSockets(int count, absl::string_view name) {
+		if (absl::StartsWithIgnoreCase(name, "a")) {
+			return std::vector<Socket>(count, {"", Audio});
+		}
+		return std::vector<Socket>(count, {"", Video});
+	}
+	int getOptIndex(const Filter& base, absl::string_view name) {
+		for (int i = 0; i < base.options.size(); ++i) {
+			if (base.options[i].name == name) { return i; }
+		}
+		return -1;
+	}
+}  // namespace
 
 void FilterGraph::optHook(
 	const NodeId& id, const int& optId, const std::string& value) {
@@ -190,7 +215,52 @@ void FilterGraph::optHook(
 
 	std::optional<std::vector<Socket>> newInputs, newOutputs;
 
-	if (base.name == INPUT_FILTER_NAME && option.name == "path") {
+	struct Counts {
+		std::set<absl::string_view> fNames;
+		std::set<absl::string_view> oNames;
+		bool isInput;
+		absl::string_view selector;
+	};
+
+	std::vector<Counts> count{
+		{{"ainterleave", "interleave"}, {"nb_inputs", "n"}, true},
+		{{"amerge"}, {"inputs"}, true},
+		{{"amix", "mix"}, {"inputs"}, true},
+		{{"aselect", "select"}, {"outputs", "n"}, false},
+		{{"asplit", "split"}, {"outputs", "n"}, false},
+		{{"join"}, {"inputs"}, true, "a"},
+		{{"hstack"}, {"inputs"}, true},
+		{{"libplacebo"}, {"inputs"}, true},
+		{{"program_opencl"}, {"inputs"}, true},
+		{{"signature"}, {"nb_inputs"}, true},
+		{{"vstack"}, {"inputs"}, true},
+		{{"xmedian"}, {"inputs"}, true},
+		{{"xstack"}, {"inputs"}, true},
+		{{"hstack_qsv"}, {"inputs"}, true},
+		{{"vstack_qsv"}, {"inputs"}, true},
+		{{"xstack_qsv"}, {"inputs"}, true},
+	};
+
+	if (auto itr = std::find_if(
+			count.begin(), count.end(),
+			[&base, &option](const Counts& c) {
+				return contains(c.fNames, base.name) &&
+					   contains(c.oNames, option.name);
+			});
+		itr != count.end()) {
+		int count;
+		if (absl::SimpleAtoi(value, &count)) {
+			auto selector = itr->selector.empty() ? base.name : itr->selector;
+			if (itr->isInput) {
+				newInputs = getNewSockets(count, selector);
+			} else {
+				newOutputs = getNewSockets(count, selector);
+			}
+		}
+	} else if (
+		(base.name == INPUT_FILTER_NAME || base.name == "movie" ||
+		 base.name == "amovie") &&
+		option.name == "filename") {
 		newOutputs = getMediaInfo(profile.runner, value);
 	} else if (base.name == "acrossover" && option.name == "split") {
 		auto count = 1u;
@@ -203,33 +273,26 @@ void FilterGraph::optHook(
 			newOutputs = getNewSockets(count, SocketType::Audio);
 		}
 	} else if (
-		(base.name == "ainterleave" || base.name == "interleave") &&
-		(option.name == "nb_inputs" || option.name == "n")) {
-		int count;
-		if (absl::SimpleAtoi(value, &count)) {
-			newInputs = getNewSockets(count, base.name);
-		}
-	} else if (
-		(base.name == "amerge" || base.name == "amix") &&
-		option.name == "inputs") {
-		int count;
-		if (absl::SimpleAtoi(value, &count)) {
-			newInputs = getNewSockets(count, SocketType::Audio);
-		}
-	} else if (
 		(base.name == "asegment" || base.name == "segment") &&
 		(option.name == "timestamps")) {
 		auto count = std::count(value.begin(), value.end(), '|') + 1;
 		if (count != node.output().size()) {
 			newOutputs = getNewSockets(count, base.name);
 		}
-	} else if (
-		(base.name == "aselect" || base.name == "asplit" ||
-		 base.name == "split") &&
-		(option.name == "outputs" || option.name == "n")) {
-		int count;
-		if (absl::SimpleAtoi(value, &count)) {
-			newOutputs = getNewSockets(count, base.name);
+	} else if (base.name == "concat") {
+		int n = 2, v = 1, a = 0;
+		auto ni = getOptIndex(base, "n");
+		auto vi = getOptIndex(base, "v");
+		auto ai = getOptIndex(base, "a");
+		contains(node.option, ni) && absl::SimpleAtoi(node.option[ni], &n);
+		contains(node.option, vi) && absl::SimpleAtoi(node.option[vi], &v);
+		contains(node.option, ai) && absl::SimpleAtoi(node.option[ai], &a);
+		newOutputs =
+			getNewSockets({v, a}, {SocketType::Video, SocketType::Audio});
+		newInputs = getNewSockets(0, "");
+		for (int i = 0; i < n; ++i) {
+			newInputs->insert(
+				newInputs->end(), newOutputs->begin(), newOutputs->end());
 		}
 	}
 	if (newInputs.has_value()) {
@@ -260,12 +323,9 @@ const NodeId FilterGraph::addNode(const Filter& filter) {
 		state, nodeIndex, nodeVertexId, filter.output, {},
 		nodes.back().outputSocketIds, false);
 
-	for (int i = 0; i < filter.options.size(); ++i) {
-		if (filter.options[i].name == filter.name) {
-			nodes.back().option[i] = filter.options[i].defaultValue;
-			optHook(getNodeId(nodeVertexId), i, filter.options[i].defaultValue);
-			break;
-		}
+	if (auto i = getOptIndex(filter, filter.name); i != -1) {
+		nodes.back().option[i] = filter.options[i].defaultValue;
+		optHook(getNodeId(nodeVertexId), i, filter.options[i].defaultValue);
 	}
 	return getNodeId(nodeVertexId);
 }
