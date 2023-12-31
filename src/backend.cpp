@@ -8,6 +8,9 @@
 
 #include <iostream>
 
+#include "extras/IconsFontAwesome6.h"
+#include "extras/IconsFontAwesome6.h_fa-solid-900.ttf.h"
+
 static void glfw_error_callback(int error, const char* description) {
 	std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
@@ -44,11 +47,29 @@ bool BackendWrapperGlfw3OpenGL3::InitWindow(ImGuiConfigFlags flags) {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ctx = ImGui::CreateContext();
+
+	// Setup Font
+	auto fontSize = 24.0f * highDPIscaleFactor;
+	// FontAwesome fonts need to have their sizes reduced
+	// by 2.0f/3.0f in order to align correctly
+	float iconFontSize = fontSize * 2.0f / 3.0f;
+
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= flags;
 	io.Fonts->Clear();
 	io.Fonts->AddFontFromFileTTF(
 		"C:\\Windows\\Fonts\\segoeui.ttf", 24.0f * highDPIscaleFactor);
+
+	static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
+	ImFontConfig icons_config;
+	icons_config.MergeMode = true;
+	icons_config.PixelSnapH = true;
+	icons_config.GlyphMinAdvanceX = iconFontSize;
+	icons_config.FontDataOwnedByAtlas = false;
+	auto f = io.Fonts->AddFontFromMemoryTTF(
+		s_fa_solid_900_ttf, sizeof(s_fa_solid_900_ttf), iconFontSize,
+		&icons_config, icons_ranges);
+	if (f != nullptr) { io.FontDefault = f; }
 
 	ImGui::GetStyle().ScaleAllSizes(highDPIscaleFactor);
 

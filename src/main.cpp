@@ -7,8 +7,6 @@
 #include <vector>
 
 #include "backend.hpp"
-#include "extras/IconsFontAwesome6.h"
-#include "extras/IconsFontAwesome6.h_fa-solid-900.ttf.h"
 #include "ffmpeg/profile.hpp"
 #include "file_utils.hpp"
 #include "node_editor.hpp"
@@ -49,25 +47,6 @@ int main() {
 		{"File", "New", MenuActionNew, ImGuiKey_N, true},
 		{"File", "Open..", MenuActionOpen, ImGuiKey_O, true},
 	});
-
-	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->Build();
-	float baseFontSize = io.Fonts->Fonts.front()->FontSize;
-	// FontAwesome fonts need to have their sizes reduced
-	// by 2.0f/3.0f in order to align correctly
-	float iconFontSize = baseFontSize * 2.0f / 3.0f;
-
-	// merge in icons from Font Awesome
-	static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
-	ImFontConfig icons_config;
-	icons_config.MergeMode = true;
-	icons_config.PixelSnapH = true;
-	icons_config.GlyphMinAdvanceX = iconFontSize;
-	icons_config.FontDataOwnedByAtlas = false;
-	auto f = io.Fonts->AddFontFromMemoryTTF(
-		s_fa_solid_900_ttf, sizeof(s_fa_solid_900_ttf), iconFontSize,
-		&icons_config, icons_ranges);
-	if (f != nullptr) { io.FontDefault = f; }
 
 	// Our state
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);

@@ -12,7 +12,7 @@ struct MenuItem {
 	absl::string_view name;
 	int id;
 	ImGuiKey key = ImGuiKey_None;
-	bool keyCtrl = false, keyShift = false, keyAlt = false;
+	bool keyCtrl = false, keyAlt = false, keyShift = false;
 	std::string shortcut;
 };
 
