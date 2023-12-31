@@ -12,6 +12,7 @@ class Runner {
 	std::filesystem::path path;
 
    public:
+	Runner() : path("ffmpeg") {}
 	Runner(std::filesystem::path p) : path(p) {}
 	int lineScanner(
 		std::vector<std::string> args, LineScannerCallback cb,

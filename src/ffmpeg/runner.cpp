@@ -1,5 +1,6 @@
 #include "ffmpeg/runner.hpp"
 
+#include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
@@ -76,11 +77,13 @@ std::pair<int, std::string> Runner::play(
 	std::filesystem::create_directories(tempPath.parent_path());
 	std::ofstream tempfile(tempPath, std::ios::binary);
 
-	std::vector<std::string> args{"ffmpeg", "-hide_banner"};
+	std::vector<std::string> args{path.string(), "-hide_banner"};
 	if (inputs.empty()) {
 		args.insert(args.end(), {"-f", "lavfi", "-i", "nullsrc"});
 	} else {
-		for (auto& i : inputs) { args.insert(args.end(), {"-i", i}); }
+		for (auto& i : inputs) {
+			args.insert(args.end(), {"-i", '"' + i + '"'});
+		}
 	}
 	if (!filter.empty()) {
 		args.push_back("-filter_complex");

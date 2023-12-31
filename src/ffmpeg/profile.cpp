@@ -296,7 +296,7 @@ const std::vector<Option> OutputNodeOptions = {
 };
 
 Profile GetProfile() {
-	Runner runner("C:\\Users\\suraj\\scoop\\shims\\ffmpeg.exe");
+	Runner runner;
 	Profile profile(runner);
 
 	try {

@@ -109,7 +109,7 @@ namespace {
 		std::vector<Socket> sockets;
 		bool inputStarted = false;
 		r.lineScanner(
-			{"-i", path},
+			{"-i", '"' + path + '"'},
 			[&](absl::string_view line) {
 				if (!inputStarted) {
 					inputStarted = absl::StartsWith(line, "Input #0");
