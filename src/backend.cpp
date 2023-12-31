@@ -1,11 +1,11 @@
 #include "backend.hpp"
 
 #include <GLFW/glfw3.h>
+#include <absl/strings/string_view.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <cstdio>
 #include <iostream>
 
 static void glfw_error_callback(int error, const char* description) {
@@ -102,4 +102,56 @@ void BackendWrapperGlfw3OpenGL3::Shutdown() {
 	if (ctx != nullptr) { ImGui::DestroyContext(ctx); }
 	glfwDestroyWindow(window);
 	glfwTerminate();
+}
+
+void BackendWrapperGlfw3OpenGL3::SetupMenuBar(
+	const std::initializer_list<MenuItem>& items) {
+	menu.clear();
+	menu.insert(menu.end(), items);
+	for (auto& item : menu) {
+		if (item.key != ImGuiKey_None) {
+			item.shortcut = std::string(item.keyCtrl ? "Ctrl+" : "") +
+							std::string(item.keyAlt ? "Alt+" : "") +
+							std::string(item.keyShift ? "Shift+" : "") +
+							ImGui::GetKeyName(item.key);
+		}
+	}
+}
+
+int BackendWrapperGlfw3OpenGL3::DrawMenu() {
+	using namespace ImGui;
+	int returnValue = 0;
+	if (BeginMainMenuBar()) {
+		for (auto i = 0u, j = 0u; i < menu.size();) {
+			for (j = i; j < menu.size(); ++j) {
+				if (menu[j].root != menu[i].root) { break; }
+			}
+			if (BeginMenu(menu[i].root.data())) {
+				for (; i < j; ++i) {
+					bool clicked = false;
+					if (menu[i].key == ImGuiKey_None) {
+						clicked = ImGui::MenuItem(menu[i].name.data());
+					} else {
+						clicked = ImGui::MenuItem(
+							menu[i].name.data(), menu[i].shortcut.data());
+					}
+					if (clicked) { returnValue = menu[i].id; }
+				}
+				EndMenu();
+			} else {
+				i = j;
+			}
+		}
+		EndMainMenuBar();
+	}
+	ImGuiIO& io = ImGui::GetIO();
+	for (auto& item : menu) {
+		auto ctrl = !item.keyCtrl || io.KeyCtrl;
+		auto shift = !item.keyShift || io.KeyShift;
+		auto alt = !item.keyAlt || io.KeyAlt;
+		if (ctrl && shift && alt && IsKeyPressed(item.key, false)) {
+			returnValue = item.id;
+		}
+	}
+	return returnValue;
 }

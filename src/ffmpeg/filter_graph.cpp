@@ -191,7 +191,7 @@ namespace {
 		}
 		return ret;
 	}
-	std::vector<Socket> getNewSockets(int count, absl::string_view name) {
+	std::vector<Socket> getNewSockets(long long count, absl::string_view name) {
 		if (absl::StartsWithIgnoreCase(name, "a")) {
 			return std::vector<Socket>(count, {"", Audio});
 		}

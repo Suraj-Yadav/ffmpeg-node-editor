@@ -1,3 +1,4 @@
+#include <fmt/core.h>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
 
@@ -11,6 +12,12 @@
 #include "ffmpeg/profile.hpp"
 #include "file_utils.hpp"
 #include "node_editor.hpp"
+
+enum MenuAction {
+	MenuActionNone = 0,
+	MenuActionNew,
+	MenuActionOpen,
+};
 
 int main() {
 	std::set_terminate([]() {
@@ -38,6 +45,10 @@ int main() {
 
 	// Setup Platform/Renderer backends
 	backend.Setup();
+	backend.SetupMenuBar({
+		{"File", "New", MenuActionNew, ImGuiKey_N, true},
+		{"File", "Open..", MenuActionOpen, ImGuiKey_O, true},
+	});
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->Build();
@@ -68,37 +79,36 @@ int main() {
 
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
+		MenuAction menuAction = static_cast<MenuAction>(backend.DrawMenu());
 		ImGui::ShowDemoWindow();
-
-		// Menu Bar
-		if (ImGui::BeginMainMenuBar()) {
-			if (ImGui::BeginMenu("File")) {
-				auto possibleName = fmt::format("Untitled {}", untitledCount);
-				if (ImGui::MenuItem("New", "CTRL+N")) {
-					editors.emplace_back(profile, possibleName);
-					untitledCount++;
-				}
-				if (ImGui::MenuItem("Open..", "CTRL+O")) {
-					auto path = openFile();
-					if (path.has_value()) {
-						auto itr = std::find_if(
-							editors.begin(), editors.end(), [&](const auto& e) {
-								return std::filesystem::equivalent(
-									e.getPath(), path.value());
-							});
-						if (itr == editors.end()) {
-							NodeEditor e(profile, possibleName);
-							if (e.load(path.value())) { editors.push_back(e); }
-						} else {
-							ImGui::SetWindowFocus(itr->getName().c_str());
-						}
-					} else {
-						SPDLOG_INFO("User pressed cancel");
-					}
-				}
-				ImGui::EndMenu();
+		switch (menuAction) {
+			case MenuActionNew: {
+				editors.emplace_back(
+					profile, fmt::format("Untitled {}", untitledCount));
+				untitledCount++;
+				break;
 			}
-			ImGui::EndMainMenuBar();
+			case MenuActionOpen: {
+				auto path = openFile();
+				if (path.has_value()) {
+					auto itr = std::find_if(
+						editors.begin(), editors.end(), [&](const auto& e) {
+							return std::filesystem::equivalent(
+								e.getPath(), path.value());
+						});
+					if (itr == editors.end()) {
+						NodeEditor e(profile, "");
+						if (e.load(path.value())) { editors.push_back(e); }
+					} else {
+						ImGui::SetWindowFocus(itr->getName().c_str());
+					}
+				} else {
+					SPDLOG_INFO("User pressed cancel");
+				}
+				break;
+			}
+			case MenuActionNone: {
+			}
 		}
 
 		for (auto& editor : editors) { editor.draw(style); }

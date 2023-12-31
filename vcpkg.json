@@ -5,6 +5,7 @@
     "dependencies": [
         "abseil",
         "glfw3",
+        "gtest",
         {
             "name": "imgui",
             "features": [
