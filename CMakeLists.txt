@@ -21,9 +21,11 @@ add_executable(ffmpeg_node_editor
     src/ffmpeg/filter_graph.cpp
     src/ffmpeg/profile.cpp
     src/ffmpeg/runner.cpp
+    src/file_utils.cpp
     src/imgui_extras.cpp
     src/main.cpp
     src/node_editor.cpp
+    src/pref.cpp
 )
 
 target_include_directories(ffmpeg_node_editor PUBLIC "${CMAKE_SOURCE_DIR}/include")

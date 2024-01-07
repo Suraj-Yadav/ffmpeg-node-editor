@@ -418,7 +418,7 @@ FilterNode& FilterGraph::getNode(NodeId id) {
 	return nodes[state.vertIdToNodeIndex[getU(id)]];
 }
 
-FilterGraphError FilterGraph::play(const NodeId& id) {
+FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	FilterGraphError err{NO_ERROR};
 
 	fmt::memory_buffer buff;
@@ -499,7 +499,7 @@ FilterGraphError FilterGraph::play(const NodeId& id) {
 	SPDLOG_INFO(fmt::to_string(buff));
 	int status = 0;
 	std::tie(status, err.message) =
-		profile.runner.play(inputs, fmt::to_string(buff), out);
+		profile.runner.play(pref, inputs, fmt::to_string(buff), out);
 	if (status != 0) { err.code = PLAYER_RUNTIME; }
 	return err;
 }

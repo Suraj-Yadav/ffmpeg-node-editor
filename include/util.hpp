@@ -2,8 +2,6 @@
 
 #include <map>
 #include <set>
-#include <type_traits>
-#include <vector>
 
 template <typename E, typename... T>
 auto contains(const std::set<T...>& c, const E& e) {

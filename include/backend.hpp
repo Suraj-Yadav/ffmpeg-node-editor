@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "pref.hpp"
+
 struct MenuItem {
 	absl::string_view root;
 	absl::string_view name;
@@ -24,7 +26,7 @@ class BackendWrapperGlfw3OpenGL3 {
 	std::vector<MenuItem> menu;
 
    public:
-	bool InitWindow(ImGuiConfigFlags flags);
+	bool InitWindow(ImGuiConfigFlags flags, const Preference& pref);
 	void Setup();
 	void SetupMenuBar(const std::initializer_list<MenuItem>&);
 	int DrawMenu();

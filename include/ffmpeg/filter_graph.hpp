@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "filter_node.hpp"
+#include "pref.hpp"
 
 enum NodeIterOrder { Default, Topological };
 
@@ -72,5 +73,6 @@ class FilterGraph {
 
 	void clear();
 
-	FilterGraphError play(const NodeId& id = INVALID_NODE);
+	FilterGraphError play(
+		const Preference& pref, const NodeId& id = INVALID_NODE);
 };

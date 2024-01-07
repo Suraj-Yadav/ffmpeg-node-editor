@@ -10,25 +10,10 @@
 #include <memory>
 
 #include "ffmpeg/filter_graph.hpp"
+#include "pref.hpp"
 
 class FilterNode;
 class Profile;
-
-enum StyleColor {
-	NodeHeader = 0,
-	NodeBg,
-	Border,
-	Wire,
-	VideoSocket,
-	AudioSocket,
-	SubtitleSocket,
-	COUNT
-};
-
-struct Style {
-	ImVec4 colors[StyleColor::COUNT];
-	Style();
-};
 
 struct Popup {
 	absl::string_view type;
@@ -51,7 +36,7 @@ class NodeEditor {
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
 	void searchBar();
-	void popups();
+	void popups(const Preference& pref);
 
 	std::string name;
 	std::filesystem::path path;
@@ -61,7 +46,7 @@ class NodeEditor {
 	~NodeEditor();
 	const std::string getName() const;
 	const std::filesystem::path& getPath() const;
-	void draw(const Style& style);
+	void draw(const Preference& pref);
 	bool save(const std::filesystem::path& path) const;
 	bool load(const std::filesystem::path& path);
 };

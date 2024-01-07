@@ -10,11 +10,13 @@
 #include "ffmpeg/profile.hpp"
 #include "file_utils.hpp"
 #include "node_editor.hpp"
+#include "pref.hpp"
 
 enum MenuAction {
 	MenuActionNone = 0,
 	MenuActionNew,
 	MenuActionOpen,
+	MenuActionPreference,
 };
 
 int main() {
@@ -27,13 +29,16 @@ int main() {
 		}
 		std::abort();
 	});
+	Preference pref;
 
 	auto profile = GetProfile();
+	pref.load();
 
 	BackendWrapperGlfw3OpenGL3 backend;
 	if (!backend.InitWindow(
 			ImGuiConfigFlags_NavEnableKeyboard |
-			ImGuiConfigFlags_NavEnableGamepad)) {
+				ImGuiConfigFlags_NavEnableGamepad,
+			pref)) {
 		return 1;
 	}
 
@@ -46,15 +51,16 @@ int main() {
 	backend.SetupMenuBar({
 		{"File", "New", MenuActionNew, ImGuiKey_N, true},
 		{"File", "Open..", MenuActionOpen, ImGuiKey_O, true},
+		{"File", "Preferences", MenuActionPreference, ImGuiKey_Comma, true},
 	});
+
+	bool showPreference = false;
 
 	// Our state
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
-
-	Style style;
 
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
@@ -86,11 +92,17 @@ int main() {
 				}
 				break;
 			}
+			case MenuActionPreference: {
+				showPreference = !showPreference;
+				break;
+			}
 			case MenuActionNone: {
 			}
 		}
 
-		for (auto& editor : editors) { editor.draw(style); }
+		for (auto& editor : editors) { editor.draw(pref); }
+
+		if (showPreference) { pref.draw(); }
 
 		// Rendering
 		backend.Render(clear_color);

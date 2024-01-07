@@ -20,19 +20,6 @@
 
 namespace ed = ax::NodeEditor;
 
-Style::Style() {
-	using namespace ImGui;
-
-	ed::Style v;
-	colors[NodeHeader] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[NodeBg] = v.Colors[ed::StyleColor_NodeBg];
-	colors[Border] = v.Colors[ed::StyleColor_NodeBorder];
-	// colors[Wire] = v.Colors[ed::StyleColor_];
-	colors[VideoSocket] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[AudioSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 255, 0, 255));
-	colors[SubtitleSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 0, 255, 255));
-}
-
 NodeEditor::NodeEditor(const Profile& p, const std::string& n)
 	: g(p), popup({""}), name(n) {
 	ed::Config config;
@@ -97,7 +84,7 @@ bool drawOption(
 			bool v = value == "1";
 			if (Checkbox("##b", &v)) { value = v ? "1" : "0"; }
 		} else if (option.type == "color") {
-			auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
+			auto color = ColorConvertHexToFloat4(value);
 			if (ColorButton("##col", color, ImGuiColorEditFlags_NoTooltip)) {
 				popup.type = POPUP_OPTION_COLOR;
 				popup.nodeId = id;
@@ -225,7 +212,7 @@ void NodeEditor::drawNode(
 	}
 }
 
-void NodeEditor::popups() {
+void NodeEditor::popups(const Preference& pref) {
 	using namespace ImGui;
 
 	if (!popup.type.empty()) {
@@ -243,7 +230,7 @@ void NodeEditor::popups() {
 		auto& node = g.getNode(popup.nodeId);
 		if (Selectable("Play till this node")) {
 			CloseCurrentPopup();
-			auto err = g.play(popup.nodeId);
+			auto err = g.play(pref, popup.nodeId);
 			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
 				popup.type = POPUP_MISSING_INPUT;
 				popup.msg = err.message;
@@ -328,7 +315,9 @@ void NodeEditor::popups() {
 		auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
 		if (ColorPicker4(
 				"##col", &color.x,
-				ImGuiColorEditFlags_PickerHueWheel |
+				(pref.style.colorPicker == 0
+					 ? ImGuiColorEditFlags_PickerHueBar
+					 : ImGuiColorEditFlags_PickerHueWheel) |
 					ImGuiColorEditFlags_AlphaBar |
 					ImGuiColorEditFlags_AlphaPreviewHalf)) {
 			value = ColorConvertU32ToHex(ColorConvertFloat4ToU32(color));
@@ -371,13 +360,13 @@ void NodeEditor::searchBar() {
 	}
 }
 
-void NodeEditor::draw(const Style& style) {
+void NodeEditor::draw(const Preference& pref) {
 	if (ImGui::Begin(getName().c_str())) {
 		ed::SetCurrentEditor(context.get());
 		ed::Begin(getName().c_str());
 
 		g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
-			drawNode(style, node, id);
+			drawNode(pref.style, node, id);
 		});
 
 		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
@@ -458,7 +447,7 @@ void NodeEditor::draw(const Style& style) {
 		ed::SetCurrentEditor(nullptr);
 
 		searchBar();
-		popups();
+		popups(pref);
 	}
 	ImGui::End();
 }

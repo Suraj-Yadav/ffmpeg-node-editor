@@ -15,7 +15,8 @@ static void glfw_error_callback(int error, const char* description) {
 	std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
 
-bool BackendWrapperGlfw3OpenGL3::InitWindow(ImGuiConfigFlags flags) {
+bool BackendWrapperGlfw3OpenGL3::InitWindow(
+	ImGuiConfigFlags flags, const Preference& pref) {
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit()) return false;
 
@@ -49,7 +50,7 @@ bool BackendWrapperGlfw3OpenGL3::InitWindow(ImGuiConfigFlags flags) {
 	ctx = ImGui::CreateContext();
 
 	// Setup Font
-	auto fontSize = 24.0f * highDPIscaleFactor;
+	auto fontSize = pref.fontSize * float(highDPIscaleFactor);
 	// FontAwesome fonts need to have their sizes reduced
 	// by 2.0f/3.0f in order to align correctly
 	float iconFontSize = fontSize * 2.0f / 3.0f;
@@ -57,8 +58,11 @@ bool BackendWrapperGlfw3OpenGL3::InitWindow(ImGuiConfigFlags flags) {
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= flags;
 	io.Fonts->Clear();
-	io.Fonts->AddFontFromFileTTF(
-		"C:\\Windows\\Fonts\\segoeui.ttf", 24.0f * highDPIscaleFactor);
+	if (!pref.font.empty()) {
+		io.Fonts->AddFontFromFileTTF(pref.font.string().c_str(), fontSize);
+	} else {
+		io.Fonts->AddFontDefault();
+	}
 
 	static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
 	ImFontConfig icons_config;

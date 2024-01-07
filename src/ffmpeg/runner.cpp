@@ -1,17 +1,24 @@
 #include "ffmpeg/runner.hpp"
 
+#include <absl/strings/match.h>
+#include <absl/strings/str_split.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <future>
 #include <process.hpp>
 #include <thread>
+#include <vector>
+
+#include "pref.hpp"
 namespace {
 	void reader(
 		TinyProcessLib::Process* cmd, bool& running,
@@ -68,8 +75,8 @@ int Runner::lineScanner(
 }
 
 std::pair<int, std::string> Runner::play(
-	const std::vector<std::string>& inputs, absl::string_view filter,
-	const std::vector<std::string>& outputs) const {
+	const Preference& pref, const std::vector<std::string>& inputs,
+	absl::string_view filter, const std::vector<std::string>& outputs) const {
 	const auto tempPath =
 		std::filesystem::temp_directory_path() / "ffmpeg_node_editor" /
 		fmt::format("temp{}.mkv", PID * 1000 + (++filename_index));
@@ -82,7 +89,14 @@ std::pair<int, std::string> Runner::play(
 		args.insert(args.end(), {"-f", "lavfi", "-i", "nullsrc"});
 	} else {
 		for (auto& i : inputs) {
-			args.insert(args.end(), {"-i", '"' + i + '"'});
+			auto itr = std::find_if(i.begin(), i.end(), [](auto c) {
+				return std::isspace(static_cast<unsigned char>(c));
+			});
+			if (itr != i.end()) {
+				args.insert(args.end(), {"-i", '"' + i + '"'});
+			} else {
+				args.insert(args.end(), {"-i", i});
+			}
 		}
 	}
 	if (!filter.empty()) {
@@ -110,8 +124,16 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	if (!ffmpeg.try_get_exit_status(ffmpeg_status)) {
-		TinyProcessLib::Process player(
-			std::vector<std::string>{"vlc", tempPath.string()});
+		std::vector<std::string> player_args;
+		for (auto& elem :
+			 absl::StrSplit(pref.player, '\n', absl::SkipWhitespace())) {
+			if (elem == "%f") {
+				player_args.emplace_back(tempPath.string());
+			} else {
+				player_args.emplace_back(elem);
+			}
+		}
+		TinyProcessLib::Process player(player_args);
 		auto f = std::async([&]() {
 			SPDLOG_INFO("waiting for player process");
 			player_status = player.get_exit_status();

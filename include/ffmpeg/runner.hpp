@@ -6,6 +6,8 @@
 #include <functional>
 #include <vector>
 
+#include "pref.hpp"
+
 using LineScannerCallback = std::function<bool(absl::string_view line)>;
 
 class Runner {
@@ -19,6 +21,7 @@ class Runner {
 		bool readStdErr = false) const;
 
 	std::pair<int, std::string> play(
-		const std::vector<std::string>& inputs, absl::string_view filter,
+		const Preference& pref, const std::vector<std::string>& inputs,
+		absl::string_view filter,
 		const std::vector<std::string>& outputs) const;
 };
