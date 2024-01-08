@@ -360,8 +360,10 @@ void NodeEditor::searchBar() {
 	}
 }
 
-void NodeEditor::draw(const Preference& pref) {
+bool NodeEditor::draw(const Preference& pref) {
+	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
+		focused = ImGui::IsWindowFocused();
 		ed::SetCurrentEditor(context.get());
 		ed::Begin(getName().c_str());
 
@@ -450,6 +452,7 @@ void NodeEditor::draw(const Preference& pref) {
 		popups(pref);
 	}
 	ImGui::End();
+	return focused;
 }
 
 namespace nlohmann {
@@ -460,6 +463,7 @@ namespace nlohmann {
 
 bool NodeEditor::save(const std::filesystem::path& path) const {
 	nlohmann::json obj;
+	obj["nodes"] = nlohmann::json::array();
 	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
 		nlohmann::json elem;
 		elem["id"] = id;
@@ -529,4 +533,3 @@ const std::string NodeEditor::getName() const {
 	if (!path.empty()) { return path.filename().string(); }
 	return name;
 }
-const std::filesystem::path& NodeEditor::getPath() const { return path; }

@@ -5,6 +5,7 @@
 #include <vector>
 
 std::optional<std::filesystem::path> openFile();
+std::optional<std::filesystem::path> saveFile();
 
 std::optional<std::filesystem::path> selectFont();
 

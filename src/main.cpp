@@ -16,8 +16,11 @@ enum MenuAction {
 	MenuActionNone = 0,
 	MenuActionNew,
 	MenuActionOpen,
+	MenuActionSave,
 	MenuActionPreference,
 };
+
+const auto NO_ACTIVE_EDITOR = "No Active Editor";
 
 int main() {
 	std::set_terminate([]() {
@@ -51,6 +54,7 @@ int main() {
 	backend.SetupMenuBar({
 		{"File", "New", MenuActionNew, ImGuiKey_N, true},
 		{"File", "Open..", MenuActionOpen, ImGuiKey_O, true},
+		{"File", "Save", MenuActionSave, ImGuiKey_S, true},
 		{"File", "Preferences", MenuActionPreference, ImGuiKey_Comma, true},
 	});
 
@@ -61,6 +65,7 @@ int main() {
 
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
+	int focusedEditor = -1;
 
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
@@ -74,8 +79,7 @@ int main() {
 				break;
 			}
 			case MenuActionOpen: {
-				auto path = openFile();
-				if (path.has_value()) {
+				if (auto path = openFile(); path.has_value()) {
 					auto itr = std::find_if(
 						editors.begin(), editors.end(), [&](const auto& e) {
 							return std::filesystem::equivalent(
@@ -92,6 +96,24 @@ int main() {
 				}
 				break;
 			}
+			case MenuActionSave: {
+				if (focusedEditor != -1) {
+					auto& editor = editors[focusedEditor];
+					if (!editor.getPath().empty()) {
+						editor.save(editor.getPath());
+					} else {
+						if (auto path = saveFile(); path.has_value()) {
+							editor.save(path.value());
+							editor.setPath(path.value());
+						} else {
+							SPDLOG_INFO("User pressed cancel");
+						}
+					}
+				} else {
+					ImGui::OpenPopup(NO_ACTIVE_EDITOR);
+				}
+				break;
+			}
 			case MenuActionPreference: {
 				showPreference = !showPreference;
 				break;
@@ -100,9 +122,26 @@ int main() {
 			}
 		}
 
-		for (auto& editor : editors) { editor.draw(pref); }
+		focusedEditor = -1;
+		for (auto i = 0; i < editors.size(); ++i) {
+			if (editors[i].draw(pref)) { focusedEditor = i; };
+		}
 
 		if (showPreference) { pref.draw(); }
+
+		if (ImGui::BeginPopupModal(NO_ACTIVE_EDITOR)) {
+			ImGui::BeginHorizontal(__LINE__);
+			ImGui::Spring();
+			ImGui::Text("No Editor is active");
+			ImGui::Spring();
+			ImGui::EndHorizontal();
+			ImGui::BeginHorizontal(__LINE__);
+			ImGui::Spring();
+			if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
+			ImGui::Spring();
+			ImGui::EndHorizontal();
+			ImGui::EndPopup();
+		}
 
 		// Rendering
 		backend.Render(clear_color);

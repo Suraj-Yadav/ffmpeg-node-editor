@@ -15,11 +15,26 @@
 #include <string>
 
 std::optional<std::filesystem::path> openFile() {
-	nfdchar_t* outPath = NULL;
+	nfdchar_t* outPath = nullptr;
 	nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
 	if (result == NFD_OKAY) {
 		std::filesystem::path v(outPath);
 		free(outPath);
+		return v;
+	} else if (result == NFD_CANCEL) {
+		return {};
+	} else {
+		throw std::runtime_error(NFD_GetError());
+	}
+	return {};
+}
+std::optional<std::filesystem::path> saveFile() {
+	nfdchar_t* savePath = nullptr;
+	nfdresult_t result = NFD_SaveDialog("json", NULL, &savePath);
+	if (result == NFD_OKAY) {
+		std::filesystem::path v(savePath);
+		if (!v.has_extension()) { v.replace_extension(".json"); }
+		free(savePath);
 		return v;
 	} else if (result == NFD_CANCEL) {
 		return {};

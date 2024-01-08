@@ -45,8 +45,9 @@ class NodeEditor {
 	NodeEditor(const Profile& p, const std::string& n);
 	~NodeEditor();
 	const std::string getName() const;
-	const std::filesystem::path& getPath() const;
-	void draw(const Preference& pref);
+	const std::filesystem::path& getPath() const { return path; };
+	void setPath(std::filesystem::path& p) { path = p; };
+	bool draw(const Preference& pref);
 	bool save(const std::filesystem::path& path) const;
 	bool load(const std::filesystem::path& path);
 };
