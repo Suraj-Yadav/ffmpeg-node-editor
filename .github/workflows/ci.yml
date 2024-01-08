@@ -1,0 +1,29 @@
+name: CI
+on: 
+  push:
+    branches:
+      - '**'        # matches every branch
+      - '!master'
+    tags:
+      - '**'        # matches every tag
+jobs:
+  build-windows:
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+      VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: cmake configure
+        run: |
+          $env:CMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake -B build -S .
+      - name: cmake build
+        run: cmake --build build --config Release

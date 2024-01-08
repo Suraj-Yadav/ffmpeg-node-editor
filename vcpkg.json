@@ -1,0 +1,29 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "ffmpeg-node-editor",
+    "builtin-baseline": "0e47c1985273129e4d0ee52ff73bed9125555de8",
+    "dependencies": [
+        "abseil",
+        "glfw3",
+        "gtest",
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding",
+                "opengl3-binding"
+            ]
+        },
+        "imgui-node-editor",
+        "nativefiledialog",
+        "nlohmann-json",
+        "re2",
+        "spdlog",
+        "tiny-process-library"
+    ],
+    "overrides": [
+        {
+            "name": "imgui-node-editor",
+            "version": "0.9.2"
+        }
+    ]
+}
