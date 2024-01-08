@@ -5,6 +5,9 @@ A simple node editor over ffmpeg's filter_complex.
 * Run any node in filter graph
 * Load/Save filtergraphs
 * Support for dynamic nodes (mostly)
+
+demo.mp4
+
 ## Planned Features
 * Export bash/batch scripts to run ffmpeg commands
 * Automatic layout

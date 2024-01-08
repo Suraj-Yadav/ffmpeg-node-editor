@@ -70,7 +70,6 @@ int main() {
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
 		MenuAction menuAction = static_cast<MenuAction>(backend.DrawMenu());
-		ImGui::ShowDemoWindow();
 		switch (menuAction) {
 			case MenuActionNew: {
 				editors.emplace_back(
