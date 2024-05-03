@@ -1,7 +1,5 @@
 #include "pref.hpp"
 
-#include <absl/strings/str_split.h>
-#include <absl/strings/string_view.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -16,6 +14,7 @@
 #include <string>
 
 #include "imgui_extras.hpp"
+#include "string_utils.hpp"
 
 namespace ed = ax::NodeEditor;
 
@@ -54,7 +53,7 @@ Paths::Paths() {
 
 const Paths path;
 
-absl::string_view StyleColorName(StyleColor val) {
+std::string_view StyleColorName(StyleColor val) {
 #define CASE(VAL) \
 	case VAL:     \
 		return #VAL
@@ -185,9 +184,9 @@ void Preference::draw() {
 				}
 				Spring();
 				if (InputTextMultiline("##player", &player)) {
-					for (auto& elem :
-						 absl::StrSplit(player, '\n', absl::SkipWhitespace())) {
-						SPDLOG_INFO("elem = {}", std::string(elem));
+					for (auto& elem : str::split(player, '\n')) {
+						SPDLOG_DEBUG(
+							"elem = {}", std::string(str::strip(elem)));
 					};
 				}
 

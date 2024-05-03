@@ -1,14 +1,12 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
-
 #include <filesystem>
 #include <functional>
 #include <vector>
 
 #include "pref.hpp"
 
-using LineScannerCallback = std::function<bool(absl::string_view line)>;
+using LineScannerCallback = std::function<bool(std::string_view line)>;
 
 class Runner {
 	std::filesystem::path path;
@@ -22,6 +20,5 @@ class Runner {
 
 	std::pair<int, std::string> play(
 		const Preference& pref, const std::vector<std::string>& inputs,
-		absl::string_view filter,
-		const std::vector<std::string>& outputs) const;
+		std::string_view filter, const std::vector<std::string>& outputs) const;
 };

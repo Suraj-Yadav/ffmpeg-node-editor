@@ -1,6 +1,5 @@
 #include "node_editor.hpp"
 
-#include <absl/strings/match.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -16,6 +15,7 @@
 #include "ffmpeg/profile.hpp"
 #include "file_utils.hpp"
 #include "imgui_extras.hpp"
+#include "string_utils.hpp"
 #include "util.hpp"
 
 namespace ed = ax::NodeEditor;
@@ -69,9 +69,9 @@ bool drawOption(
 		}
 	} else {
 		changed = ImGui::InputText("", &value);
-		if (absl::EndsWithIgnoreCase(option.name, "path") ||
-			absl::EndsWithIgnoreCase(option.name, "file") ||
-			absl::EndsWithIgnoreCase(option.name, "filename")) {
+		if (str::ends_with(option.name, "path", true) ||
+			str::ends_with(option.name, "file", true) ||
+			str::ends_with(option.name, "filename", true)) {
 			Spring(0, 0);
 			if (Button(ICON_FA_FOLDER_OPEN)) {
 				auto path = openFile();
@@ -291,8 +291,8 @@ void NodeEditor::popups(const Preference& pref) {
 		auto& value = node.option[popup.optId];
 
 		for (auto& elem : option.allowed) {
-			if (absl::StrContainsIgnoreCase(elem.value, value) ||
-				absl::StrContainsIgnoreCase(elem.desc, value)) {
+			if (str::contains(elem.value, value, true) ||
+				str::contains(elem.desc, value, true)) {
 				if (Selectable(elem.value.c_str())) {
 					node.option[popup.optId] = elem.value;
 				}

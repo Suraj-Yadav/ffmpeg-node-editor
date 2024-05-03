@@ -1,10 +1,5 @@
 #include "ffmpeg/profile.hpp"
 
-#include <absl/strings/ascii.h>
-#include <absl/strings/match.h>
-#include <absl/strings/string_view.h>
-#include <absl/strings/strip.h>
-#include <re2/re2.h>
 #include <spdlog/spdlog.h>
 
 #include <fstream>
@@ -14,6 +9,7 @@
 #include <utility>
 
 #include "ffmpeg/filter.hpp"
+#include "string_utils.hpp"
 #include "util.hpp"
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -34,9 +30,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
 
 namespace {
 
-	bool readWords(absl::string_view text, absl::string_view& dest) {
-		text = absl::StripLeadingAsciiWhitespace(text);
-		auto it = std::find_if(text.begin(), text.end(), absl::ascii_isspace);
+	bool readWords(std::string_view text, std::string_view& dest) {
+		text = str::strip_leading(text);
+		auto it = std::find_if(text.begin(), text.end(), str::isspace);
 		if (it == text.begin()) { return false; }
 		auto pos = static_cast<size_t>(it - text.begin());
 		dest = text.substr(0, pos);
@@ -44,60 +40,56 @@ namespace {
 	}
 	template <typename... Args>
 	bool readWords(
-		absl::string_view text, absl::string_view& dest, Args&... rest) {
-		text = absl::StripLeadingAsciiWhitespace(text);
+		std::string_view text, std::string_view& dest, Args&... rest) {
+		text = str::strip_leading(text);
 		return readWords(text, dest) &&
 			   readWords(text.substr(dest.size()), rest...);
 	}
 
-	int getIndent(absl::string_view text) {
-		auto itr =
-			std::find_if_not(text.begin(), text.end(), absl::ascii_isspace);
+	int getIndent(std::string_view text) {
+		auto itr = std::find_if_not(text.begin(), text.end(), str::isspace);
 		int indent = static_cast<int>(std::distance(text.begin(), itr));
 		if (itr == text.end()) { indent = 0; }
 		return indent;
 	}
 
-	bool isTimelineText(absl::string_view str) {
+	bool isTimelineText(std::string_view str) {
 		return str ==
 			   "This filter has support for timeline through the 'enable' "
 			   "option.";
 	}
-	bool isSliceThreadingText(absl::string_view str) {
+	bool isSliceThreadingText(std::string_view str) {
 		return str == "slice threading supported";
 	}
-	bool isInput(absl::string_view str) { return str == "Inputs:"; }
-	bool isOutput(absl::string_view str) { return str == "Outputs:"; }
-	bool isNoneSocket(absl::string_view str) {
+	bool isInput(std::string_view str) { return str == "Inputs:"; }
+	bool isOutput(std::string_view str) { return str == "Outputs:"; }
+	bool isNoneSocket(std::string_view str) {
 		return str == "none (source filter)" || str == "none (sink filter)";
 	}
-	bool isDynamicSocket(absl::string_view str) {
+	bool isDynamicSocket(std::string_view str) {
 		return str == "dynamic (depending on the options)";
 	}
 
-	bool isOption(absl::string_view str) {
-		return absl::EndsWith(str, "AVOptions:");
+	bool isOption(std::string_view str) {
+		return str::ends_with(str, "AVOptions:");
 	}
 
 	void splitOption(
-		absl::string_view text, absl::string_view& name,
-		absl::string_view& type, absl::string_view& flag,
-		absl::string_view& desc) {
-		std::vector<absl::string_view> parts;
-		absl::string_view str;
+		std::string_view text, std::string_view& name, std::string_view& type,
+		std::string_view& flag, std::string_view& desc) {
+		std::vector<std::string_view> parts;
+		std::string_view str;
 
 		for (int i = 0; i < 3; ++i) {
 			if (readWords(text, str)) {
 				parts.push_back(str);
-				text = absl::StripLeadingAsciiWhitespace(text);
+				text = str::strip_leading(text);
 				text.remove_prefix(str.size());
 			} else {
 				break;
 			}
 		}
-		if (!text.empty()) {
-			parts.push_back(absl::StripLeadingAsciiWhitespace(text));
-		}
+		if (!text.empty()) { parts.push_back(str::strip_leading(text)); }
 		// auto parts = std::vector<absl::string_view>(
 		// 	absl::StrSplit(text, absl::MaxSplits(' ', 4)));
 		name = parts[0];
@@ -127,7 +119,7 @@ class StateStack {
 		lastElement.reset();
 	}
 	bool empty() { return indents.empty(); }
-	absl::string_view pop(absl::string_view text) {
+	std::string_view pop(std::string_view text) {
 		if (lastElement.has_value()) {
 			texts.push_back(lastElement->first);
 			indents.push_back(lastElement->second);
@@ -135,7 +127,7 @@ class StateStack {
 		}
 
 		auto indent = getIndent(text);
-		text = absl::StripAsciiWhitespace(text);
+		text = str::strip(text);
 
 		lastElement.emplace(std::string(text), indent);
 
@@ -146,7 +138,7 @@ class StateStack {
 		}
 		return text;
 	}
-	int checkParent(std::function<bool(absl::string_view line)> f) {
+	int checkParent(std::function<bool(std::string_view line)> f) {
 		int i = 0;
 		for (auto itr = texts.rbegin(); itr != texts.rend(); itr++, i++) {
 			if (f(*itr)) { return i; }
@@ -155,23 +147,21 @@ class StateStack {
 	}
 };
 
-static constexpr re2::LazyRE2 SOCKET_REGEX = {R"(#\d+: (\w+) \((\w+)\))"};
-static constexpr re2::LazyRE2 OPTION_DEFAULT_REGEX = {
-	R"((.*)\(default (.+)\))"};
-static constexpr re2::LazyRE2 OPTION_RANGE_REGEX = {
-	R"((.*)\(from (.+) to (.+)\))"};
+static const std::regex SOCKET_REGEX(R"(#\d+: (\w+) \((\w+)\))");
+static const std::regex OPTION_DEFAULT_REGEX(R"((.*)\(default (.+)\))");
+static const std::regex OPTION_RANGE_REGEX(R"((.*)\(from (.+) to (.+)\))");
 
 class FilterParser {
 	Filter filter;
 	StateStack stack;
 
-	bool isFilterHeader(absl::string_view str) {
-		return absl::StartsWith(str, "Filter ") &&
-			   absl::EndsWith(str, filter.name);
+	bool isFilterHeader(std::string_view str) {
+		return str::starts_with(str, "Filter ") &&
+			   str::ends_with(str, filter.name);
 	}
 
-	bool parseSocket(absl::string_view text) {
-		absl::string_view name, type;
+	bool parseSocket(std::string_view text) {
+		std::string_view name, type;
 		if (isNoneSocket(text)) { return true; }
 		if (isDynamicSocket(text)) {
 			if (stack.checkParent(isInput) == 0) { filter.dynamicInput = true; }
@@ -179,7 +169,7 @@ class FilterParser {
 				filter.dynamicOutput = true;
 			}
 			return true;
-		} else if (re2::RE2::PartialMatch(text, *SOCKET_REGEX, &name, &type)) {
+		} else if (str::match(text, SOCKET_REGEX, {name, type})) {
 		} else {
 			return false;
 		}
@@ -197,9 +187,9 @@ class FilterParser {
 		return true;
 	}
 
-	bool parseOption(absl::string_view text) {
+	bool parseOption(std::string_view text) {
 		auto isSubOption = stack.checkParent(isOption) == 1;
-		absl::string_view name, type, flag, desc;
+		std::string_view name, type, flag, desc;
 		splitOption(text, name, type, flag, desc);
 		if (flag == "") {
 			//
@@ -211,11 +201,11 @@ class FilterParser {
 				AllowedValues{std::string(desc), std::string(name)});
 			return true;
 		}
-		absl::string_view a, b;
+		std::string_view a, b;
 		Option opt{
 			std::string(name), "",
-			std::string(absl::StripSuffix(absl::StripPrefix(type, "<"), ">"))};
-		if (re2::RE2::PartialMatch(desc, *OPTION_DEFAULT_REGEX, &a, &b)) {
+			std::string(str::strip_suffix(str::strip_prefix(type, "<"), ">"))};
+		if (str::match(desc, OPTION_DEFAULT_REGEX, {a, b})) {
 			desc = a;
 			if (b.front() == '"' && b.back() == '"') {
 				b.remove_prefix(1);
@@ -223,16 +213,16 @@ class FilterParser {
 			}
 			opt.defaultValue = std::string(b);
 		}
-		if (re2::RE2::PartialMatch(desc, *OPTION_RANGE_REGEX, &desc, &a, &b)) {
+		if (str::match(desc, OPTION_RANGE_REGEX, {desc, a, b})) {
 			opt.min = std::string(a);
 			opt.max = std::string(b);
 		}
-		opt.desc = std::string(absl::StripAsciiWhitespace(desc));
+		opt.desc = std::string(str::strip(desc));
 		filter.options.push_back(opt);
 		return true;
 	}
 
-	bool processLine(absl::string_view text) {
+	bool processLine(std::string_view text) {
 		text = stack.pop(text);
 
 		auto filterHeaderParent =
@@ -267,15 +257,15 @@ class FilterParser {
 
    public:
 	std::optional<Filter> parseFilter(
-		const Runner& runner, absl::string_view text) {
+		const Runner& runner, std::string_view text) {
 		filter = Filter();
 		stack.clear();
 
-		if (!absl::StartsWith(text, " ") || absl::StartsWith(text, "  ")) {
+		if (!str::starts_with(text, " ") || str::starts_with(text, "  ")) {
 			return {};
 		}
 
-		absl::string_view flags, name;
+		std::string_view flags, name;
 		if (!readWords(text, flags, name)) { return {}; }
 
 		filter.name = std::string(name);
@@ -306,7 +296,7 @@ Profile GetProfile() {
 		SPDLOG_ERROR("parse error: {}", e.what());
 		FilterParser p;
 		runner.lineScanner(
-			{"-filters"}, [&runner, &p, &profile](absl::string_view line) {
+			{"-filters"}, [&runner, &p, &profile](std::string_view line) {
 				auto f = p.parseFilter(runner, line);
 				if (f.has_value()) {
 					std::set<std::string> optNames;

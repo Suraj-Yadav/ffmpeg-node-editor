@@ -1,8 +1,5 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
-#include <vcruntime.h>
-
 #include <functional>
 #include <vector>
 

@@ -1,17 +1,14 @@
 #include "imgui_extras.hpp"
 
-#include <absl/strings/ascii.h>
-#include <absl/strings/match.h>
-#include <absl/strings/numbers.h>
-#include <absl/strings/string_view.h>
 #include <fmt/core.h>
 #include <imgui.h>
 
-#include <algorithm>
 #include <iterator>
 
+#include "string_utils.hpp"
+
 struct colorKey {
-	absl::string_view name;
+	std::string_view name;
 	ImU32 hex;
 };
 // https://www.w3.org/TR/css-color-3/#svg-color
@@ -167,43 +164,54 @@ const colorKey COLORS[] = {
 };
 
 const auto COLORS_END = COLORS + std::size(COLORS);
-bool compare_colorKey(const colorKey& a, const absl::string_view& b) {
+bool compare_colorKey(const colorKey& a, const std::string_view& b) {
 	return a.name < b;
 	// _strnicmp(a.name.data(), b.data(), std::min(a.name.size(), b.size())) <
 	// 0;
 }
 
 namespace ImGui {
-	ImU32 ColorConvertHexToU32(absl::string_view hex) {
-		ImU32 val = 0, alpha = 0xff;
+	ImU32 ColorConvertHexToU32(std::string_view hex) {
+		ImU32 r = 0, g = 0, b = 0, val = 0, a = 0xff;
 		if (hex.empty()) { return val; }
 		if (auto i = hex.find('@'); i != hex.npos) {
 			auto alphaPart = hex.substr(i);
 			alphaPart.remove_prefix(1);
 			hex.remove_suffix(hex.size() - i);
-			if (absl::SimpleHexAtoi(alphaPart, &alpha)) {
-			} else if (double v = 0; absl::SimpleAtod(alphaPart, &v)) {
-				alpha = (ImU32)(v * 255);
+			if (str::stoi(alphaPart, a, 16)) {
+			} else if (double v = 0; str::stod(alphaPart, v)) {
+				a = (ImU32)(v * 255);
 			} else {
 				return val;
 			}
 		}
 		if (hex[0] == '#') { hex.remove_prefix(1); }
-		if (absl::SimpleHexAtoi(hex, &val)) {
+		if (str::stoi(hex, val, 16)) {
 		} else if (auto itr = std::lower_bound(
-					   COLORS, COLORS_END, absl::AsciiStrToLower(hex),
-					   compare_colorKey);
-				   itr != COLORS_END &&
-				   absl::EqualsIgnoreCase(itr->name, hex)) {
+					   COLORS, COLORS_END, str::tolower(hex), compare_colorKey);
+				   itr != COLORS_END && str::equals(itr->name, hex, true)) {
 			val = itr->hex & 0x00FFFFFF;
 		} else {
 			return val;
 		}
-		if (val <= 0xFFFFFF) { val = (val << 8) + alpha; }
-		return _byteswap_ulong(val);
+		if (val <= 0xFFFFFF) {
+			r = (val & 0xFF0000) >> 16;
+			g = (val & 0x00FF00) >> 8;
+			b = (val & 0x0000FF);
+		} else {
+			r = (val & 0xFF000000) >> 24;
+			g = (val & 0x00FF0000) >> 16;
+			b = (val & 0x0000FF00) >> 8;
+			a = (val & 0x000000FF);
+		}
+		return IM_COL32(r, g, b, a);
 	}
 
 	std::string ColorConvertU32ToHex(ImU32 val) {
-		return fmt::format("#{:x}", _byteswap_ulong(val));
+		const auto r = (val >> IM_COL32_R_SHIFT) & 0xFF,
+				   g = (val >> IM_COL32_G_SHIFT) & 0xFF,
+				   b = (val >> IM_COL32_B_SHIFT) & 0xFF,
+				   a = (val >> IM_COL32_A_SHIFT) & 0xFF;
+		return fmt::format("#{:02X}{:02X}{:02X}{:02X}", r, g, b, a);
 	}
 };	// namespace ImGui

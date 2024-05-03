@@ -91,7 +91,7 @@ int main() {
 						ImGui::SetWindowFocus(itr->getName().c_str());
 					}
 				} else {
-					SPDLOG_INFO("User pressed cancel");
+					SPDLOG_DEBUG("User pressed cancel");
 				}
 				break;
 			}
@@ -105,7 +105,7 @@ int main() {
 							editor.save(path.value());
 							editor.setPath(path.value());
 						} else {
-							SPDLOG_INFO("User pressed cancel");
+							SPDLOG_DEBUG("User pressed cancel");
 						}
 					}
 				} else {

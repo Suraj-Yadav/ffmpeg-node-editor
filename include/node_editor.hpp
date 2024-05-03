@@ -2,7 +2,6 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include <absl/strings/string_view.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 
@@ -16,7 +15,7 @@ class FilterNode;
 class Profile;
 
 struct Popup {
-	absl::string_view type;
+	std::string_view type;
 	std::string msg;
 	NodeId nodeId;
 	int optId;

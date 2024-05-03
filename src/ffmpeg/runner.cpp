@@ -1,7 +1,5 @@
 #include "ffmpeg/runner.hpp"
 
-#include <absl/strings/match.h>
-#include <absl/strings/str_split.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -19,19 +17,20 @@
 #include <vector>
 
 #include "pref.hpp"
+#include "string_utils.hpp"
 namespace {
 	void reader(
 		TinyProcessLib::Process* cmd, bool& running,
 		std::string& incompleteLine, LineScannerCallback cb, const char* bytes,
 		size_t n) {
-		auto data = absl::string_view(bytes, n);
-		for (auto idx = data.find_first_of('\n');
-			 idx != absl::string_view::npos; idx = data.find_first_of('\n')) {
+		auto data = std::string_view(bytes, n);
+		for (auto idx = data.find_first_of('\n'); idx != std::string_view::npos;
+			 idx = data.find_first_of('\n')) {
 			auto line = data.substr(0, idx);
 			data.remove_prefix(idx + 1);
 			if (incompleteLine.size() > 0) {
 				incompleteLine.append(line.begin(), line.end());
-				line = absl::string_view(incompleteLine);
+				line = std::string_view(incompleteLine);
 			}
 			if (running) {
 				if (!cb(line)) {
@@ -47,7 +46,7 @@ namespace {
 		}
 	}
 
-	const int PID = _getpid();
+	const int PID = getpid();
 	std::atomic_int filename_index = 0;
 
 }  // namespace
@@ -76,7 +75,7 @@ int Runner::lineScanner(
 
 std::pair<int, std::string> Runner::play(
 	const Preference& pref, const std::vector<std::string>& inputs,
-	absl::string_view filter, const std::vector<std::string>& outputs) const {
+	std::string_view filter, const std::vector<std::string>& outputs) const {
 	const auto tempPath =
 		std::filesystem::temp_directory_path() / "ffmpeg_node_editor" /
 		fmt::format("temp{}.mkv", PID * 1000 + (++filename_index));
@@ -125,27 +124,26 @@ std::pair<int, std::string> Runner::play(
 
 	if (!ffmpeg.try_get_exit_status(ffmpeg_status)) {
 		std::vector<std::string> player_args;
-		for (auto& elem :
-			 absl::StrSplit(pref.player, '\n', absl::SkipWhitespace())) {
+		for (auto& elem : str::split(pref.player, '\n')) {
 			if (elem == "%f") {
 				player_args.emplace_back(tempPath.string());
 			} else {
-				player_args.emplace_back(elem);
+				player_args.emplace_back(str::strip(elem));
 			}
 		}
 		TinyProcessLib::Process player(player_args);
 		auto f = std::async([&]() {
-			SPDLOG_INFO("waiting for player process");
+			SPDLOG_DEBUG("waiting for player process");
 			player_status = player.get_exit_status();
-			SPDLOG_INFO("player process exited with status {}", player_status);
+			SPDLOG_DEBUG("player process exited with status {}", player_status);
 			ffmpeg.write("q");
-			SPDLOG_INFO("Asked ffmpeg process to quit");
+			SPDLOG_DEBUG("Asked ffmpeg process to quit");
 		});
 	}
 
-	SPDLOG_INFO("waiting for ffmpeg process");
+	SPDLOG_DEBUG("waiting for ffmpeg process");
 	ffmpeg_status = ffmpeg.get_exit_status();
-	SPDLOG_INFO("ffmpeg process exited with status {}", ffmpeg_status);
+	SPDLOG_DEBUG("ffmpeg process exited with status {}", ffmpeg_status);
 	if (ffmpeg_status != 0) {
 		SPDLOG_ERROR("ffmpeg stderr: {}", fmt::to_string(std_err));
 		SPDLOG_ERROR("ffmpeg args: {}", fmt::join(args, " "));

@@ -1,14 +1,9 @@
 #include "ffmpeg/filter_graph.hpp"
 
-#include <absl/strings/ascii.h>
-#include <absl/strings/match.h>
-#include <absl/strings/numbers.h>
-#include <absl/strings/string_view.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cctype>
 #include <optional>
 #include <vector>
 
@@ -16,6 +11,7 @@
 #include "ffmpeg/profile.hpp"
 #include "ffmpeg/runner.hpp"
 #include "node_editor.hpp"
+#include "string_utils.hpp"
 #include "util.hpp"
 
 const int LINK_ID_SHIFT = std::numeric_limits<IdBaseType>::digits / 2;
@@ -110,17 +106,17 @@ namespace {
 		bool inputStarted = false;
 		r.lineScanner(
 			{"-i", '"' + path + '"'},
-			[&](absl::string_view line) {
+			[&](std::string_view line) {
 				if (!inputStarted) {
-					inputStarted = absl::StartsWith(line, "Input #0");
+					inputStarted = str::starts_with(line, "Input #0");
 					return true;
 				}
-				if (absl::StartsWith(line, "  Stream #0")) {
-					if (absl::StrContains(line, "Video:")) {
+				if (str::starts_with(line, "  Stream #0")) {
+					if (str::contains(line, "Video:")) {
 						sockets.push_back({"", SocketType::Video});
-					} else if (absl::StrContains(line, "Audio:")) {
+					} else if (str::contains(line, "Audio:")) {
 						sockets.push_back({"", SocketType::Audio});
-					} else if (absl::StrContains(line, "Subtitle:")) {
+					} else if (str::contains(line, "Subtitle:")) {
 						sockets.push_back({"", SocketType::Subtitle});
 					}
 				}
@@ -191,13 +187,13 @@ namespace {
 		}
 		return ret;
 	}
-	std::vector<Socket> getNewSockets(long long count, absl::string_view name) {
-		if (absl::StartsWithIgnoreCase(name, "a")) {
+	std::vector<Socket> getNewSockets(long long count, std::string_view name) {
+		if (str::starts_with(name, "a") || str::starts_with(name, "A")) {
 			return std::vector<Socket>(count, {"", Audio});
 		}
 		return std::vector<Socket>(count, {"", Video});
 	}
-	int getOptIndex(const Filter& base, absl::string_view name) {
+	int getOptIndex(const Filter& base, std::string_view name) {
 		for (int i = 0; i < base.options.size(); ++i) {
 			if (base.options[i].name == name) { return i; }
 		}
@@ -216,10 +212,10 @@ void FilterGraph::optHook(
 	std::optional<std::vector<Socket>> newInputs, newOutputs;
 
 	struct Counts {
-		std::set<absl::string_view> fNames;
-		std::set<absl::string_view> oNames;
+		std::set<std::string_view> fNames;
+		std::set<std::string_view> oNames;
 		bool isInput;
-		absl::string_view selector;
+		std::string_view selector;
 	};
 
 	std::vector<Counts> count{
@@ -248,8 +244,7 @@ void FilterGraph::optHook(
 					   contains(c.oNames, option.name);
 			});
 		itr != count.end()) {
-		int count;
-		if (absl::SimpleAtoi(value, &count)) {
+		if (auto count = std::stoi(value)) {
 			auto selector = itr->selector.empty() ? base.name : itr->selector;
 			if (itr->isInput) {
 				newInputs = getNewSockets(count, selector);
@@ -265,7 +260,7 @@ void FilterGraph::optHook(
 	} else if (base.name == "acrossover" && option.name == "split") {
 		auto count = 1u;
 		char last = '\0';
-		for (auto& ch : absl::StripAsciiWhitespace(value)) {
+		for (auto& ch : str::strip(value)) {
 			if (std::isspace(ch) && !std::isspace(last)) { count++; }
 			last = ch;
 		}
@@ -284,9 +279,9 @@ void FilterGraph::optHook(
 		auto ni = getOptIndex(base, "n");
 		auto vi = getOptIndex(base, "v");
 		auto ai = getOptIndex(base, "a");
-		contains(node.option, ni) && absl::SimpleAtoi(node.option[ni], &n);
-		contains(node.option, vi) && absl::SimpleAtoi(node.option[vi], &v);
-		contains(node.option, ai) && absl::SimpleAtoi(node.option[ai], &a);
+		if (contains(node.option, ni)) { n = std::stoi(node.option[ni]); }
+		if (contains(node.option, vi)) { v = std::stoi(node.option[vi]); }
+		if (contains(node.option, ai)) { a = std::stoi(node.option[ai]); }
 		newOutputs =
 			getNewSockets({v, a}, {SocketType::Video, SocketType::Audio});
 		newInputs = getNewSockets(0, "");
@@ -496,7 +491,6 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	for (auto& e : outputSocketNames) {
 		out.push_back(fmt::format("{}", e.second));
 	}
-	SPDLOG_INFO(fmt::to_string(buff));
 	int status = 0;
 	std::tie(status, err.message) =
 		profile.runner.play(pref, inputs, fmt::to_string(buff), out);

@@ -1,8 +1,6 @@
 #include "file_utils.hpp"
 
 #include <Windows.h>
-#include <absl/strings/string_view.h>
-#include <minwindef.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 #include <wingdi.h>
@@ -45,7 +43,7 @@ std::optional<std::filesystem::path> saveFile() {
 }
 
 std::string GetRegString(
-	HKEY key, absl::string_view subKey, absl::string_view valueName) {
+	HKEY key, std::string_view subKey, std::string_view valueName) {
 	DWORD keyType = 0;
 	DWORD dataSize = 0;
 	const DWORD flags = RRF_RT_REG_SZ;	// Only read strings (REG_SZ)

@@ -3,7 +3,6 @@
     "name": "ffmpeg-node-editor",
     "builtin-baseline": "0e47c1985273129e4d0ee52ff73bed9125555de8",
     "dependencies": [
-        "abseil",
         "glfw3",
         "gtest",
         {
@@ -16,7 +15,6 @@
         "imgui-node-editor",
         "nativefiledialog",
         "nlohmann-json",
-        "re2",
         "spdlog",
         "tiny-process-library"
     ],

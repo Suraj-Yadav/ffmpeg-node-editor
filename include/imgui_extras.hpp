@@ -1,6 +1,5 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
@@ -19,14 +18,14 @@ namespace ImGui {
 
 	inline void Text(const std::string& str) { Text("%s", str.c_str()); }
 
-	ImU32 ColorConvertHexToU32(absl::string_view hex);
+	ImU32 ColorConvertHexToU32(std::string_view hex);
 	std::string ColorConvertU32ToHex(ImU32);
 
 	inline auto ColorConvertFloat4ToHex(const ImVec4& col) {
 		return ColorConvertU32ToHex(ColorConvertFloat4ToU32(col));
 	}
 
-	inline auto ColorConvertHexToFloat4(absl::string_view hex) {
+	inline auto ColorConvertHexToFloat4(std::string_view hex) {
 		return ColorConvertU32ToFloat4(ColorConvertHexToU32(hex));
 	}
 

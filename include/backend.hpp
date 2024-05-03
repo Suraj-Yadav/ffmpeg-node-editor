@@ -1,17 +1,17 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <absl/strings/string_view.h>
 #include <imgui.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "pref.hpp"
 
 struct MenuItem {
-	absl::string_view root;
-	absl::string_view name;
+	std::string_view root;
+	std::string_view name;
 	int id;
 	ImGuiKey key = ImGuiKey_None;
 	bool keyCtrl = false, keyAlt = false, keyShift = false;
