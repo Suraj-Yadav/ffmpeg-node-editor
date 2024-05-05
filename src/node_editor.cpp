@@ -1,6 +1,5 @@
 #include "node_editor.hpp"
 
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/spdlog.h>
@@ -8,24 +7,18 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-#include "extras/IconsFontAwesome6.h"
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
-#include "file_utils.hpp"
 #include "imgui_extras.hpp"
 #include "string_utils.hpp"
 #include "util.hpp"
 
-namespace ed = ax::NodeEditor;
-
 NodeEditor::NodeEditor(const Profile& p, const std::string& n)
 	: g(p), popup({""}), name(n) {
-	ed::Config config;
-	config.SettingsFile = nullptr;
-	context = std::shared_ptr<ed::EditorContext>(
-		ed::CreateEditor(&config), ed::DestroyEditor);
+	context = std::shared_ptr<ImNodesEditorContext>(
+		ImNodes::EditorContextCreate(), ImNodes::EditorContextFree);
 }
 
 NodeEditor::~NodeEditor() {}
@@ -48,11 +41,9 @@ bool drawOption(
 	bool changed = false;
 	BeginHorizontal(option.name.data());
 	Text(option.name);
-	ed::Suspend();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
 		ImGui::SetTooltip("%s", option.desc.data());
 	}
-	ed::Resume();
 	Spring();
 
 	PushItemWidth(width);
@@ -65,31 +56,21 @@ bool drawOption(
 			popup.optId = optId;
 			popup.isInputTextActive = IsItemActive();
 			popup.isInputTextEnterPressed = changed;
-			popup.position = ed::CanvasToScreen(GetItemRectPoint(0, 1));
 		}
 	} else {
-		changed = ImGui::InputText("", &value);
-		if (str::ends_with(option.name, "path", true) ||
+		if (str::ends_with(option.name, "fontfile")) {
+			changed = InputFont("", value);
+		} else if (
+			str::ends_with(option.name, "path", true) ||
 			str::ends_with(option.name, "file", true) ||
 			str::ends_with(option.name, "filename", true)) {
-			Spring(0, 0);
-			if (Button(ICON_FA_FOLDER_OPEN)) {
-				auto path = openFile();
-				if (path.has_value()) {
-					value = path->string();
-					changed = true;
-				}
-			}
+			changed = InputFile("", value);
 		} else if (option.type == "boolean") {
-			bool v = value == "1";
-			if (Checkbox("##b", &v)) { value = v ? "1" : "0"; }
+			changed = InputCheckbox("", value);
 		} else if (option.type == "color") {
-			auto color = ColorConvertHexToFloat4(value);
-			if (ColorButton("##col", color, ImGuiColorEditFlags_NoTooltip)) {
-				popup.type = POPUP_OPTION_COLOR;
-				popup.nodeId = id;
-				popup.optId = optId;
-			}
+			changed = InputColor("", value);
+		} else {
+			changed = ImGui::InputText("", &value);
 		}
 	}
 	PopID();
@@ -98,52 +79,64 @@ bool drawOption(
 	return changed;
 }
 
+void drawAttribute(
+	const Style& style, bool isInput, const Socket& skt, const IdBaseType& id,
+	const float& indent = 0) {
+	ImU32 col;
+	switch (skt.type) {
+		case SocketType::Video:
+			col = style.colors.at(StyleColor::VideoSocket);
+			break;
+		case SocketType::Audio:
+			col = style.colors.at(StyleColor::AudioSocket);
+			break;
+		case SocketType::Subtitle:
+			col = style.colors.at(StyleColor::SubtitleSocket);
+			break;
+	}
+	ImNodes::PushColorStyle(ImNodesCol_Pin, col);
+	if (isInput) {
+		ImNodes::BeginInputAttribute(id);
+	} else {
+		ImNodes::BeginOutputAttribute(id);
+	}
+	ImGui::Text(skt.name);
+	if (isInput) {
+		ImNodes::EndInputAttribute();
+	} else {
+		ImNodes::EndOutputAttribute();
+	}
+	ImNodes::PopColorStyle();
+}
+
 void NodeEditor::drawNode(
 	const Style& style, const FilterNode& node, const NodeId& id) {
 	using namespace ImGui;
 
-	const auto nodeId = id.val;
-	ed::BeginNode(nodeId);
+	PushID(&node);
 
-	const auto& nodeStyle = ed::GetStyle();
-	const auto lPad = nodeStyle.NodePadding.x;
-	const auto rPad = nodeStyle.NodePadding.z;
-	const auto borderW = nodeStyle.NodeBorderWidth;
-	const float pinRadius = 5;
-	const auto nSize = ed::GetNodeSize(nodeId);
-	const auto nPos = ed::GetNodePosition(nodeId);
+	const auto nodeId = id.val;
+	ImNodes::BeginNode(nodeId);
 
 	BeginVertical(&node);
 
-	BeginHorizontal(&nodeId);
-	Spring();
-	Text(node.name);
-	Spring();
-	EndHorizontal();
+	{
+		// Suspend and resume needed as title
+		// bar adds to layout width
+		SuspendLayout();
+		ImNodes::BeginNodeTitleBar();
+		ResumeLayout();
+		BeginHorizontal(&nodeId);
+		Spring();
+		Text(node.name);
+		Spring();
+		EndHorizontal();
+		SuspendLayout();
+		ImNodes::EndNodeTitleBar();
+		ResumeLayout();
+	}
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
-
-#define DRAW_INPUT_SOCKET(SOCKET, ID)                             \
-	ed::BeginPin((ID), ed::PinKind::Input);                       \
-	Text((SOCKET).name);                                          \
-	pins.emplace_back(                                            \
-		GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0), \
-		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
-	ed::PinRect(                                                  \
-		pins.back().first - ImVec2(pinRadius, pinRadius),         \
-		pins.back().first + ImVec2(pinRadius, pinRadius));        \
-	ed::EndPin();
-
-#define DRAW_OUTPUT_SOCKET(SOCKET, ID)                            \
-	ed::BeginPin((ID), ed::PinKind::Output);                      \
-	Text((SOCKET).name);                                          \
-	pins.emplace_back(                                            \
-		GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0), \
-		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
-	ed::PinRect(                                                  \
-		pins.back().first - ImVec2(pinRadius, pinRadius),         \
-		pins.back().first + ImVec2(pinRadius, pinRadius));        \
-	ed::EndPin();
 
 	{
 		// Both
@@ -154,16 +147,16 @@ void NodeEditor::drawNode(
 			const auto& out = node.output()[i];
 			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&inID.val);
-			DRAW_INPUT_SOCKET(in, inID.val);
+			drawAttribute(style, true, in, inID.val);
 			Spring();
-			DRAW_OUTPUT_SOCKET(out, outID.val);
+			drawAttribute(style, false, out, outID.val);
 			EndHorizontal();
 		}
 		// Only input
 		for (auto i = limit; i < node.input().size(); ++i) {
 			const auto& in = node.input()[i];
 			const auto& inID = node.inputSocketIds[i];
-			DRAW_INPUT_SOCKET(in, inID.val);
+			drawAttribute(style, true, in, inID.val);
 		}
 		// Only output
 		for (auto i = limit; i < node.output().size(); ++i) {
@@ -171,7 +164,7 @@ void NodeEditor::drawNode(
 			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&outID.val);
 			Spring();
-			DRAW_OUTPUT_SOCKET(out, outID.val);
+			drawAttribute(style, false, out, outID.val);
 			EndHorizontal();
 		}
 	}
@@ -198,18 +191,9 @@ void NodeEditor::drawNode(
 	}
 
 	EndVertical();
-	ed::EndNode();
+	ImNodes::EndNode();
 
-	const auto list = ed::GetNodeBackgroundDrawList(nodeId);
-	list->AddRectFilled(
-		nPos + ImVec2(borderW / 2, borderW / 2),
-		nPos + ImVec2(nSize.x - borderW / 2, GetFrameHeightWithSpacing()),
-		ImColor(style.colors[StyleColor::NodeHeader]), nodeStyle.NodeRounding,
-		ImDrawFlags_RoundCornersTop);
-
-	for (auto& pin : pins) {
-		list->AddCircleFilled(pin.first, pinRadius, pin.second);
-	}
+	PopID();
 }
 
 void NodeEditor::popups(const Preference& pref) {
@@ -360,95 +344,111 @@ void NodeEditor::searchBar() {
 	}
 }
 
+void NodeEditor::handleNodeAddition() {
+	const auto POP_UP_ID = "add_node_popup";
+
+	const bool open_popup =
+		ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+		ImNodes::IsEditorHovered() && ImGui::IsKeyReleased(ImGuiKey_Space);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
+	if (!ImGui::IsAnyItemHovered() && open_popup) {
+		ImGui::OpenPopup(POP_UP_ID);
+		searchStarted = true;
+	}
+	if (ImGui::BeginPopup(POP_UP_ID)) {
+		int count = 0;
+		if (searchStarted) {
+			searchStarted = false;
+			ImGui::SetKeyboardFocusHere();
+		}
+		searchFilter.Draw(" ");
+		for (auto& f : g.allFilters()) {
+			if (searchFilter.PassFilter(f.name.c_str())) {
+				if (ImGui::Selectable(f.name.c_str())) {
+					g.addNode(f);
+					searchFilter.Clear();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				ImGui::Text("- %s", f.desc.c_str());
+				if (count++ == 5) { break; }
+			}
+		}
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleVar();
+}
+
 bool NodeEditor::draw(const Preference& pref) {
 	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
 		focused = ImGui::IsWindowFocused();
-		ed::SetCurrentEditor(context.get());
-		ed::Begin(getName().c_str());
+		ImNodes::EditorContextSet(context.get());
+		ImNodes::BeginNodeEditor();
+
+		handleNodeAddition();
+
+		ImNodesStyle& style = ImNodes::GetStyle();
+		style.Colors[ImNodesCol_TitleBar] =
+			pref.style.colors.at(StyleColor::NodeHeader);
+		style.PinCircleRadius = 5;
 
 		g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
 			drawNode(pref.style, node, id);
 		});
 
 		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
-			ed::Link(id.val, s.val, d.val);
+			ImNodes::Link(id.val, s.val, d.val);
 		});
 
-		ed::NodeId contextNodeId;
-		if (ed::ShowNodeContextMenu(&contextNodeId)) {
+		// // Handle deletion action
+		// if (ed::BeginDelete()) {
+		// 	// There may be many links marked for deletion, let's loop over
+		// 	// them.
+		// 	ed::NodeId deletedNodeId;
+		// 	while (ed::QueryDeletedNode(&deletedNodeId)) {
+		// 		if (ed::AcceptDeletedItem(false)) {
+		// 			g.deleteNode(NodeId{deletedNodeId.Get()});
+		// 		}
+		// 	}
+		// }
+		// ed::EndDelete();  // Wrap up deletion action
+		ImNodes::MiniMap(0.2, ImNodesMiniMapLocation_BottomRight);
+		ImNodes::EndNodeEditor();
+
+		int hoveredId;
+		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+			ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+			ImNodes::IsNodeHovered(&hoveredId)) {
 			popup.type = POPUP_NODE_OPTIONS;
-			popup.nodeId = {contextNodeId.Get()};
+			popup.nodeId = {static_cast<IdBaseType>(hoveredId)};
 		}
 
-		if (ed::BeginCreate()) {
-			ed::PinId inputPinId, outputPinId;
-			if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
-				// QueryNewLink returns true if editor want to create new
-				// link between pins.
-				//
-				// Link can be created only for two valid pins, it is up to
-				// you to validate if connection make sense. Editor is happy
-				// to make any.
-				//
-				// Link always goes from input to output. User may choose to
-				// drag link from output pin or input pin. This determine
-				// which pin ids are valid and which are not:
-				//   * input valid, output invalid - user started to drag
-				//   new ling from input pin
-				//   * input invalid, output valid - user started to drag
-				//   new ling from output pin
-				//   * input valid, output valid   - user dragged link over
-				//   other pin, can be validated
-				if (inputPinId && outputPinId) {
-					auto pin1 = inputPinId.Get();
-					auto pin2 = outputPinId.Get();
-					if (g.canAddLink({pin1}, {pin2})) {
-						// ed::AcceptNewItem() return true when user release
-						// mouse button.
-						if (ed::AcceptNewItem()) {
-							const auto& linkId = g.addLink({pin1}, {pin2});
-							if (linkId != INVALID_LINK) {
-								ed::Link(linkId.val, pin1, pin2);
-							}
-						}
-					} else {
-						// You may choose to reject connection between these
-						// nodes by calling ed::RejectNewItem(). This will
-						// allow editor to give visual feedback by changing
-						// link thickness and color.
-						ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
-					}
+		{
+			int pin1, pin2;
+			if (ImNodes::IsLinkCreated(&pin1, &pin2)) {
+				if (g.canAddLink(
+						{static_cast<IdBaseType>(pin1)},
+						{static_cast<IdBaseType>(pin2)})) {
+					g.addLink(
+						{static_cast<IdBaseType>(pin1)},
+						{static_cast<IdBaseType>(pin2)});
 				}
 			}
 		}
-		ed::EndCreate();  // Wraps up object creation action handling.
 
-		// Handle deletion action
-		if (ed::BeginDelete()) {
-			// There may be many links marked for deletion, let's loop over
-			// them.
-			ed::LinkId deletedLinkId;
-			while (ed::QueryDeletedLink(&deletedLinkId)) {
-				// If you agree that link can be deleted, accept deletion.
-				if (ed::AcceptDeletedItem()) {
-					// Then remove link from your data.
-					g.deleteLink(LinkId{deletedLinkId.Get()});
-				}
-			}
-			ed::NodeId deletedNodeId;
-			while (ed::QueryDeletedNode(&deletedNodeId)) {
-				if (ed::AcceptDeletedItem(false)) {
-					g.deleteNode(NodeId{deletedNodeId.Get()});
-				}
+		{
+			int deletedLinkId;
+			if (ImNodes::IsLinkDestroyed(&deletedLinkId)) {
+				g.deleteLink(LinkId{deletedLinkId});
 			}
 		}
-		ed::EndDelete();  // Wrap up deletion action
 
-		ed::End();
-		ed::SetCurrentEditor(nullptr);
+		// ed::End();
+		ImNodes::EditorContextSet(nullptr);
+		// ed::SetCurrentEditor(nullptr);
 
-		searchBar();
+		// searchBar();
 		popups(pref);
 	}
 	ImGui::End();

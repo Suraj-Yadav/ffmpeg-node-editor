@@ -1,6 +1,5 @@
 #include "pref.hpp"
 
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/spdlog.h>
@@ -16,19 +15,19 @@
 #include "imgui_extras.hpp"
 #include "string_utils.hpp"
 
-namespace ed = ax::NodeEditor;
-
 Style::Style() : colorPicker(0) {
 	using namespace ImGui;
 
-	ed::Style v;
-	colors[NodeHeader] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[NodeBg] = v.Colors[ed::StyleColor_NodeBg];
-	colors[Border] = v.Colors[ed::StyleColor_NodeBorder];
+	// ed::Style v;
+	colors[StyleColor::NodeHeader] = IM_COL32(255, 0, 0, 255);
+	// colors[StyleColor::NodeBg] =
+	// 	ColorConvertFloat4ToU32(v.Colors[ed::StyleColor_NodeBg]);
+	// colors[StyleColor::Border] =
+	// 	ColorConvertFloat4ToU32(v.Colors[ed::StyleColor_NodeBorder]);
 	// colors[Wire] = v.Colors[ed::StyleColor_];
-	colors[VideoSocket] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[AudioSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 255, 0, 255));
-	colors[SubtitleSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 0, 255, 255));
+	colors[StyleColor::VideoSocket] = IM_COL32(255, 0, 0, 255);
+	colors[StyleColor::AudioSocket] = IM_COL32(0, 255, 0, 255);
+	colors[StyleColor::SubtitleSocket] = IM_COL32(0, 0, 255, 255);
 }
 
 Preference::Preference()
@@ -54,8 +53,8 @@ Paths::Paths() {
 const Paths path;
 
 std::string_view StyleColorName(StyleColor val) {
-#define CASE(VAL) \
-	case VAL:     \
+#define CASE(VAL)         \
+	case StyleColor::VAL: \
 		return #VAL
 	switch (val) {
 		CASE(NodeHeader);
@@ -65,8 +64,6 @@ std::string_view StyleColorName(StyleColor val) {
 		CASE(VideoSocket);
 		CASE(AudioSocket);
 		CASE(SubtitleSocket);
-		case COUNT:
-			return "";
 	}
 #undef CASE
 	return "";
@@ -79,10 +76,10 @@ bool Preference::load() {
 	} catch (nlohmann::json::exception&) { return false; }
 	auto& colors = json["colors"];
 	if (!colors.is_null()) {
-		for (int i = 0; i < StyleColor::COUNT; ++i) {
-			auto name = StyleColorName(StyleColor(i));
+		for (auto& elem : style.colors) {
+			auto name = StyleColorName(elem.first);
 			if (!colors[name].is_null()) {
-				style.colors[i] = ImGui::ColorConvertHexToFloat4(
+				elem.second = ImGui::ColorConvertHexToU32(
 					colors[name].get<std::string>());
 			}
 		}
@@ -103,10 +100,8 @@ bool Preference::save() {
 	nlohmann::json obj;
 	using namespace ImGui;
 	auto& colors = obj["colors"];
-
-	for (int i = 0; i < StyleColor::COUNT; ++i) {
-		colors[StyleColorName(StyleColor(i))] =
-			ColorConvertFloat4ToHex(style.colors[i]);
+	for (auto& elem : style.colors) {
+		colors[StyleColorName(elem.first)] = ColorConvertU32ToHex(elem.second);
 	}
 	obj["color_picker"] = style.colorPicker;
 	obj["font"] = font.string();
@@ -123,51 +118,54 @@ bool Preference::save() {
 void Preference::draw() {
 	using namespace ImGui;
 	if (ImGui::Begin("Edit Preference")) {
-		BeginVertical("preference");
+		// BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
-			for (int i = 0; i < StyleColor::COUNT; ++i) {
-				PushID(i);
-				BeginHorizontal(i);
-				Text("%s", StyleColorName(StyleColor(i)).data());
-				Spring();
-				ColorEdit4(
-					"##col", &style.colors[i].x,
-					(style.colorPicker == 0
-						 ? ImGuiColorEditFlags_PickerHueBar
-						 : ImGuiColorEditFlags_PickerHueWheel) |
-						ImGuiColorEditFlags_NoInputs |
-						ImGuiColorEditFlags_NoTooltip);
-				EndHorizontal();
+			for (auto& elem : style.colors) {
+				PushID(static_cast<int>(elem.first));
+				// BeginHorizontal(&elem);
+				Text("%s", StyleColorName(elem.first).data());
+				// Spring();
+				if (ImVec4 col = ColorConvertU32ToFloat4(elem.second);
+					ColorEdit4(
+						"##col", &col.x,
+						(style.colorPicker == 0
+							 ? ImGuiColorEditFlags_PickerHueBar
+							 : ImGuiColorEditFlags_PickerHueWheel) |
+							ImGuiColorEditFlags_NoInputs |
+							ImGuiColorEditFlags_NoTooltip)) {
+					elem.second = ColorConvertFloat4ToU32(col);
+				}
+				// EndHorizontal();
 				PopID();
 			}
 		}
 		int id = -1;
 		if (CollapsingHeader("UI"), ImGuiTreeNodeFlags_DefaultOpen) {
 			{
-				BeginHorizontal(id--);
+				// BeginHorizontal(id--);
 				Text("Color Selector");
-				Spring();
+				// Spring();
 				Combo("##picker", &style.colorPicker, "HueBar\0HueWheel\0");
-				EndHorizontal();
+				// EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
+				// BeginHorizontal(id--);
 				Text("Font");
-				Spring();
+				// Spring();
 				auto fontStr = font.string();
 				if (InputFont("##font", fontStr)) { font = fontStr; }
-				EndHorizontal();
+				// EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
+				// BeginHorizontal(id--);
 				Text("Font Size");
-				Spring();
+				// Spring();
 				DragInt("##fonstsize", &fontSize, 1.0f, 12, 1000);
-				EndHorizontal();
+				// EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
+				// BeginHorizontal(id--);
 				Text("Player");
 				if (ImGui::BeginItemTooltip()) {
 					ImGui::Text("Requirements:");
@@ -182,7 +180,7 @@ void Preference::draw() {
 					ImGui::Text("Eg (assuming vlc is in PATH)\n\tvlc\n\t%%f ");
 					ImGui::EndTooltip();
 				}
-				Spring();
+				// Spring();
 				if (InputTextMultiline("##player", &player)) {
 					for (auto& elem : str::split(player, '\n')) {
 						SPDLOG_DEBUG(
@@ -190,20 +188,20 @@ void Preference::draw() {
 					};
 				}
 
-				EndHorizontal();
+				// EndHorizontal();
 			}
 		}
 		{
-			BeginHorizontal(id--);
-			Spring();
+			// BeginHorizontal(id--);
+			// Spring();
 			if (Button("Reset")) { *this = {}; }
-			Spring();
+			// Spring(0.5);
 			if (Button("Save")) { save(); }
-			Spring();
-			EndHorizontal();
+			// Spring();
+			// EndHorizontal();
 		}
 		PopID();
-		EndVertical();
+		// EndVertical();
 	}
 	ImGui::End();
 }

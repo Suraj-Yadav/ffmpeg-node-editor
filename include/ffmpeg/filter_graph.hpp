@@ -6,7 +6,7 @@
 #include "filter_node.hpp"
 #include "pref.hpp"
 
-enum NodeIterOrder { Default, Topological };
+enum class NodeIterOrder { Default, Topological };
 
 class Profile;
 
@@ -32,7 +32,11 @@ struct GraphState {
 	std::vector<std::vector<size_t>> revAdjList;
 };
 
-enum FilterGraphErrorCode { NO_ERROR, PLAYER_MISSING_INPUT, PLAYER_RUNTIME };
+enum class FilterGraphErrorCode {
+	PLAYER_NO_ERROR,
+	PLAYER_MISSING_INPUT,
+	PLAYER_RUNTIME
+};
 struct FilterGraphError {
 	FilterGraphErrorCode code;
 	std::string message;

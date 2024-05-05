@@ -2,8 +2,8 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
+#include <imnodes.h>
 
 #include <filesystem>
 #include <memory>
@@ -26,7 +26,7 @@ struct Popup {
 
 class NodeEditor {
 	FilterGraph g;
-	std::shared_ptr<ax::NodeEditor::EditorContext> context;
+	std::shared_ptr<ImNodesEditorContext> context;
 
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
@@ -35,6 +35,7 @@ class NodeEditor {
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
 	void searchBar();
+	void handleNodeAddition();
 	void popups(const Preference& pref);
 
 	std::string name;

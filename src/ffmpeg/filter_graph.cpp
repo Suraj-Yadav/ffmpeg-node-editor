@@ -189,9 +189,9 @@ namespace {
 	}
 	std::vector<Socket> getNewSockets(long long count, std::string_view name) {
 		if (str::starts_with(name, "a") || str::starts_with(name, "A")) {
-			return std::vector<Socket>(count, {"", Audio});
+			return std::vector<Socket>(count, {"", SocketType::Audio});
 		}
-		return std::vector<Socket>(count, {"", Video});
+		return std::vector<Socket>(count, {"", SocketType::Video});
 	}
 	int getOptIndex(const Filter& base, std::string_view name) {
 		for (int i = 0; i < base.options.size(); ++i) {
@@ -414,7 +414,7 @@ FilterNode& FilterGraph::getNode(NodeId id) {
 }
 
 FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
-	FilterGraphError err{NO_ERROR};
+	FilterGraphError err{FilterGraphErrorCode::PLAYER_NO_ERROR};
 
 	fmt::memory_buffer buff;
 	std::vector<std::string> inputs;
@@ -423,14 +423,16 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	iterateNodes(
 		[&](const FilterNode& node, const NodeId& id) {
 			auto idx = inputs.size();
-			if (err.code != NO_ERROR) { return; }
+			if (err.code != FilterGraphErrorCode::PLAYER_NO_ERROR) { return; }
 			auto isInput = node.base().name == INPUT_FILTER_NAME;
 			inputSockets(
 				id, [&](const Socket& s, const NodeId& sId,
 						const NodeId& parentSocketId) {
-					if (err.code != NO_ERROR) { return; }
+					if (err.code != FilterGraphErrorCode::PLAYER_NO_ERROR) {
+						return;
+					}
 					if (parentSocketId == INVALID_NODE) {
-						err.code = PLAYER_MISSING_INPUT;
+						err.code = FilterGraphErrorCode::PLAYER_MISSING_INPUT;
 						err.message = fmt::format(
 							"Socket {} of node {} needs an input", s.name,
 							node.name);
@@ -441,7 +443,7 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 						std::back_inserter(buff), "{}",
 						inputSocketNames[parentSocketId.val]);
 				});
-			if (err.code != NO_ERROR) { return; }
+			if (err.code != FilterGraphErrorCode::PLAYER_NO_ERROR) { return; }
 			if (isInput) {
 				inputs.push_back(node.option.at(0));
 			} else {
@@ -458,9 +460,25 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 						buff.push_back(':');
 					}
 					first = false;
+#ifdef _WIN32
+					// Hack for fontconfig in windows
+					if (str::ends_with(options[optId].name, "fontfile")) {
+						auto v = optValue;
+						std::replace(v.begin(), v.end(), '\\', '/');
+						v.insert(v.find(':'), "\\\\");
+						fmt::format_to(
+							std::back_inserter(buff), "{}={}",
+							options[optId].name.data(), v);
+					} else {
+						fmt::format_to(
+							std::back_inserter(buff), "{}={}",
+							options[optId].name.data(), optValue);
+					}
+#else
 					fmt::format_to(
 						std::back_inserter(buff), "{}={}",
 						options[optId].name.data(), optValue);
+#endif
 				}
 			}
 
@@ -486,7 +504,7 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
 		},
 		NodeIterOrder::Topological, id);
-	if (err.code != NO_ERROR) { return err; }
+	if (err.code != FilterGraphErrorCode::PLAYER_NO_ERROR) { return err; }
 	std::vector<std::string> out;
 	for (auto& e : outputSocketNames) {
 		out.push_back(fmt::format("{}", e.second));
@@ -494,7 +512,7 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	int status = 0;
 	std::tie(status, err.message) =
 		profile.runner.play(pref, inputs, fmt::to_string(buff), out);
-	if (status != 0) { err.code = PLAYER_RUNTIME; }
+	if (status != 0) { err.code = FilterGraphErrorCode::PLAYER_RUNTIME; }
 	return err;
 }
 

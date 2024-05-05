@@ -14,8 +14,8 @@
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
 	SocketType, {
-					{Video, "video"},
-					{Audio, "audio"},
+					{SocketType::Video, "video"},
+					{SocketType::Audio, "audio"},
 				});
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Socket, name, type);

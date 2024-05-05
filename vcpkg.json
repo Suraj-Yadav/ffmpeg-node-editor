@@ -5,23 +5,9 @@
     "dependencies": [
         "glfw3",
         "gtest",
-        {
-            "name": "imgui",
-            "features": [
-                "glfw-binding",
-                "opengl3-binding"
-            ]
-        },
-        "imgui-node-editor",
         "nativefiledialog",
         "nlohmann-json",
         "spdlog",
         "tiny-process-library"
-    ],
-    "overrides": [
-        {
-            "name": "imgui-node-editor",
-            "version": "0.9.2"
-        }
     ]
 }

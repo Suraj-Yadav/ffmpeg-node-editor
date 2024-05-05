@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-enum SocketType { Video, Audio, Subtitle };
+enum class SocketType { Video, Audio, Subtitle };
 
 struct Socket {
 	std::string name;

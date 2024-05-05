@@ -3,20 +3,20 @@
 #include <imgui.h>
 
 #include <filesystem>
+#include <map>
 
-enum StyleColor {
+enum class StyleColor {
 	NodeHeader = 0,
 	NodeBg,
 	Border,
 	Wire,
 	VideoSocket,
 	AudioSocket,
-	SubtitleSocket,
-	COUNT
+	SubtitleSocket
 };
 
 struct Style {
-	ImVec4 colors[StyleColor::COUNT];
+	std::map<StyleColor, ImU32> colors;
 	int colorPicker;
 	Style();
 };

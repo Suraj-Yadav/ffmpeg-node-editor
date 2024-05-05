@@ -58,6 +58,8 @@ int main() {
 		{"File", "Preferences", MenuActionPreference, ImGuiKey_Comma, true},
 	});
 
+	auto ctx = ImNodes::CreateContext();
+
 	bool showPreference = false;
 
 	// Our state
@@ -147,6 +149,7 @@ int main() {
 	}
 
 	// Cleanup
+	ImNodes::DestroyContext(ctx);
 	backend.Shutdown();
 
 	return 0;

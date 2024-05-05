@@ -12,7 +12,7 @@
 		bool operator!=(const NEW_TYPE& rhs) const { return val != rhs.val; } \
 	};
 
-using IdBaseType = size_t;
+using IdBaseType = int;
 
 STRONG_TYPEDEF(NodeId, IdBaseType);
 STRONG_TYPEDEF(LinkId, IdBaseType);
