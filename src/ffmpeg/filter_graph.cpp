@@ -460,6 +460,9 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 						buff.push_back(':');
 					}
 					first = false;
+
+					const auto VALUE_FORMAT = "{}=\"{}\"";
+
 #ifdef _WIN32
 					// Hack for fontconfig in windows
 					if (str::ends_with(options[optId].name, "fontfile")) {
@@ -467,16 +470,16 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 						std::replace(v.begin(), v.end(), '\\', '/');
 						v.insert(v.find(':'), "\\\\");
 						fmt::format_to(
-							std::back_inserter(buff), "{}={}",
+							std::back_inserter(buff), VALUE_FORMAT,
 							options[optId].name.data(), v);
 					} else {
 						fmt::format_to(
-							std::back_inserter(buff), "{}={}",
+							std::back_inserter(buff), VALUE_FORMAT,
 							options[optId].name.data(), optValue);
 					}
 #else
 					fmt::format_to(
-						std::back_inserter(buff), "{}={}",
+						std::back_inserter(buff), VALUE_FORMAT,
 						options[optId].name.data(), optValue);
 #endif
 				}

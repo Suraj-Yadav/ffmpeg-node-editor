@@ -31,12 +31,11 @@ class NodeEditor {
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
 
-	Popup popup;
+	NodeId selectedNodeId = INVALID_NODE;
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
 	void searchBar();
 	void handleNodeAddition();
-	void popups(const Preference& pref);
 
 	std::string name;
 	std::filesystem::path path;

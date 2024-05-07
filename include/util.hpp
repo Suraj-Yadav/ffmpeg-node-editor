@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <set>
 
@@ -20,3 +21,18 @@ template <class T, class E> auto erase(T& c, const E& e) {
 	auto itr = std::remove(c.begin(), c.end(), e);
 	if (itr != c.end()) { c.erase(itr, c.end()); }
 }
+
+class defer {
+	using action = std::function<void()>;
+	action _action;
+
+   public:
+	defer(const action& act) : _action(act) {}
+	defer(const action&& act) : _action(std::move(act)) {}
+
+	defer(const defer& act) = delete;
+	defer& operator=(const defer& act) = delete;
+	defer(defer&& act) = delete;
+	defer& operator=(defer&& act) = delete;
+	~defer() { _action(); }
+};

@@ -20,8 +20,6 @@ enum MenuAction {
 	MenuActionPreference,
 };
 
-const auto NO_ACTIVE_EDITOR = "No Active Editor";
-
 int main() {
 	std::set_terminate([]() {
 		auto excPtr = std::current_exception();
@@ -59,8 +57,6 @@ int main() {
 	});
 
 	auto ctx = ImNodes::CreateContext();
-
-	bool showPreference = false;
 
 	// Our state
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -111,12 +107,12 @@ int main() {
 						}
 					}
 				} else {
-					ImGui::OpenPopup(NO_ACTIVE_EDITOR);
+					showErrorMessage("No Active Editor", "No Editor is active");
 				}
 				break;
 			}
 			case MenuActionPreference: {
-				showPreference = !showPreference;
+				pref.show = !pref.show;
 				break;
 			}
 			case MenuActionNone: {
@@ -128,21 +124,7 @@ int main() {
 			if (editors[i].draw(pref)) { focusedEditor = i; };
 		}
 
-		if (showPreference) { pref.draw(); }
-
-		if (ImGui::BeginPopupModal(NO_ACTIVE_EDITOR)) {
-			ImGui::BeginHorizontal(__LINE__);
-			ImGui::Spring();
-			ImGui::Text("No Editor is active");
-			ImGui::Spring();
-			ImGui::EndHorizontal();
-			ImGui::BeginHorizontal(__LINE__);
-			ImGui::Spring();
-			if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
-			ImGui::Spring();
-			ImGui::EndHorizontal();
-			ImGui::EndPopup();
-		}
+		pref.draw();
 
 		// Rendering
 		backend.Render(clear_color);

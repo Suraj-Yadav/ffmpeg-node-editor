@@ -11,31 +11,60 @@
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
+#include "file_utils.hpp"
 #include "imgui_extras.hpp"
 #include "string_utils.hpp"
 #include "util.hpp"
 
-NodeEditor::NodeEditor(const Profile& p, const std::string& n)
-	: g(p), popup({""}), name(n) {
+NodeEditor::NodeEditor(const Profile& p, const std::string& n) : g(p), name(n) {
 	context = std::shared_ptr<ImNodesEditorContext>(
 		ImNodes::EditorContextCreate(), ImNodes::EditorContextFree);
 }
 
 NodeEditor::~NodeEditor() {}
 
-const auto POPUP_MISSING_INPUT = "Missing Input";
-const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
-const auto POPUP_NODE_OPTIONS = "Node Options";
-const auto POPUP_OPTION_COMPLETION = "Completion";
-const auto POPUP_OPTION_COLOR = "Color";
+auto InputTextWithCompletion(
+	const char* label, std::string& value,
+	const std::vector<AllowedValues>& allowed) {
+	using namespace ImGui;
+	const auto POPUP_OPTION_COMPLETION = "Completion";
 
-#define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
-#define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
-#define OPT_ID(X)		  int(((X) << 4) + 3)
+	const bool isInputTextEnterPressed =
+		InputText(label, &value, ImGuiInputTextFlags_EnterReturnsTrue);
+	const bool isInputTextActive = IsItemActive();
+	const bool isInputTextActivated = IsItemActivated();
+
+	if (isInputTextActivated) OpenPopup(POPUP_OPTION_COMPLETION);
+
+	SetNextWindowPos(ImVec2(GetItemRectMin().x, GetItemRectMax().y));
+
+	if (BeginPopup(
+			POPUP_OPTION_COMPLETION,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
+		for (auto& elem : allowed) {
+			if (str::contains(elem.value, value, true) ||
+				str::contains(elem.desc, value, true)) {
+				if (Selectable(elem.value.c_str())) { value = elem.value; }
+				SameLine();
+				Text(elem.desc);
+			}
+		}
+
+		if (isInputTextEnterPressed ||
+			(!isInputTextActive && !IsWindowFocused())) {
+			ImGui::CloseCurrentPopup();
+			return true;
+		}
+
+		EndPopup();
+	}
+	return false;
+}
 
 bool drawOption(
 	const NodeId& id, const Option& option, int optId, std::string& value,
-	const float& width, Popup& popup) {
+	const float& width) {
 	using namespace ImGui;
 
 	bool changed = false;
@@ -49,26 +78,19 @@ bool drawOption(
 	PushItemWidth(width);
 	PushID(option.name.c_str());
 	if (option.allowed.size() > 0) {
-		changed = InputText("", &value, ImGuiInputTextFlags_EnterReturnsTrue);
-		if (IsItemActivated()) {
-			popup.type = POPUP_OPTION_COMPLETION;
-			popup.nodeId = id;
-			popup.optId = optId;
-			popup.isInputTextActive = IsItemActive();
-			popup.isInputTextEnterPressed = changed;
-		}
+		changed = InputTextWithCompletion("", value, option.allowed);
 	} else {
 		if (str::ends_with(option.name, "fontfile")) {
-			changed = InputFont("", value);
+			changed = InputFont("", value, width);
 		} else if (
 			str::ends_with(option.name, "path", true) ||
 			str::ends_with(option.name, "file", true) ||
 			str::ends_with(option.name, "filename", true)) {
-			changed = InputFile("", value);
+			changed = InputFile("", value, width);
 		} else if (option.type == "boolean") {
-			changed = InputCheckbox("", value);
+			changed = InputCheckbox("", value, width);
 		} else if (option.type == "color") {
-			changed = InputColor("", value);
+			changed = InputColor("", value, width);
 		} else {
 			changed = ImGui::InputText("", &value);
 		}
@@ -170,7 +192,7 @@ void NodeEditor::drawNode(
 	}
 
 	if (node.option.size() > 0) {
-		PushID(OPT_ID(nodeId));
+		PushID(&node.option);
 		{
 			const auto& options = node.base().options;
 			auto maxTextWidth = ImGui::CalcTextSize(node.name.c_str()).x;
@@ -181,8 +203,7 @@ void NodeEditor::drawNode(
 			}
 			for (auto& [optIdx, optValue] : g.getNode(id).option) {
 				if (drawOption(
-						id, options[optIdx], optIdx, optValue, maxTextWidth,
-						popup)) {
+						id, options[optIdx], optIdx, optValue, maxTextWidth)) {
 					g.optHook(id, optIdx, optValue);
 				}
 			}
@@ -194,154 +215,6 @@ void NodeEditor::drawNode(
 	ImNodes::EndNode();
 
 	PopID();
-}
-
-void NodeEditor::popups(const Preference& pref) {
-	using namespace ImGui;
-
-	if (!popup.type.empty()) {
-		ImGui::OpenPopup(popup.type.data());
-		popup.type = {};
-	}
-	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PREVIEW_ERROR}) {
-		if (BeginPopupModal(p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-			Text(popup.msg);
-			if (Button("Ok")) { CloseCurrentPopup(); }
-			EndPopup();
-		}
-	}
-	if (BeginPopup(POPUP_NODE_OPTIONS)) {
-		auto& node = g.getNode(popup.nodeId);
-		if (Selectable("Play till this node")) {
-			CloseCurrentPopup();
-			auto err = g.play(pref, popup.nodeId);
-			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
-				popup.type = POPUP_MISSING_INPUT;
-				popup.msg = err.message;
-			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
-				popup.type = POPUP_PREVIEW_ERROR;
-				popup.msg = err.message;
-			}
-		}
-		// SameLine();
-		// ImGui::Text("Play till this node");
-		// PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
-		// PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
-		// PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
-		// PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
-		// SPDLOG_INFO("GetStyle().ItemSpacing.x: {}",
-		// GetStyle().ItemSpacing.x); SameLine(); ArrowButton("",
-		// ImGuiDir_Right); PopID(); PopStyleColor(4);
-
-		if (node.option.size() < node.base().options.size()) {
-			if (BeginMenu("Add options")) {
-				if (searchStarted) {
-					searchStarted = false;
-					SetKeyboardFocusHere();
-				}
-				searchFilter.Draw(" ");
-				int count = 0;
-				int idx = -1;
-				for (const auto& opt : node.base().options) {
-					idx++;
-					if (contains(node.option, idx)) { continue; }
-					if (searchFilter.PassFilter(opt.name.c_str()) ||
-						searchFilter.PassFilter(opt.desc.c_str())) {
-						count++;
-						if (MenuItem(opt.name.c_str())) {
-							node.option[idx] = opt.defaultValue;
-							g.optHook(popup.nodeId, idx, opt.defaultValue);
-							searchFilter.Clear();
-							CloseCurrentPopup();
-						}
-						SameLine();
-						Text(opt.desc);
-					}
-					if (count >= 5) { break; }
-				}
-				EndMenu();
-			}
-		}
-		EndPopup();
-	} else if (
-		SetNextWindowPos(popup.position),
-		SetNextWindowSize({0, GetFrameHeightWithSpacing() * 5}),
-		BeginPopup(
-			POPUP_OPTION_COMPLETION,
-			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
-				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
-		auto& node = g.getNode(popup.nodeId);
-		const auto& option = node.base().options[popup.optId];
-		auto& value = node.option[popup.optId];
-
-		for (auto& elem : option.allowed) {
-			if (str::contains(elem.value, value, true) ||
-				str::contains(elem.desc, value, true)) {
-				if (Selectable(elem.value.c_str())) {
-					node.option[popup.optId] = elem.value;
-				}
-				SameLine();
-				Text(elem.desc);
-			}
-		}
-
-		if (popup.isInputTextEnterPressed ||
-			(!popup.isInputTextActive && !IsWindowFocused()))
-			CloseCurrentPopup();
-
-		EndPopup();
-
-		popup.isInputTextActive = false;
-		popup.isInputTextEnterPressed = false;
-	} else if (BeginPopup(POPUP_OPTION_COLOR)) {
-		auto& node = g.getNode(popup.nodeId);
-		auto& value = node.option[popup.optId];
-		auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
-		if (ColorPicker4(
-				"##col", &color.x,
-				(pref.style.colorPicker == 0
-					 ? ImGuiColorEditFlags_PickerHueBar
-					 : ImGuiColorEditFlags_PickerHueWheel) |
-					ImGuiColorEditFlags_AlphaBar |
-					ImGuiColorEditFlags_AlphaPreviewHalf)) {
-			value = ColorConvertU32ToHex(ColorConvertFloat4ToU32(color));
-		}
-		EndPopup();
-	} else {
-		popup.nodeId = INVALID_NODE;
-	}
-}
-
-void NodeEditor::searchBar() {
-	using namespace ImGui;
-
-	const auto POP_UP_ID = "add_node_popup";
-	if (ImGui::IsWindowHovered() && !ImGui::IsPopupOpen(POP_UP_ID) &&
-		ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
-		ImGui::OpenPopup(POP_UP_ID);
-		searchStarted = true;
-	}
-	if (ImGui::BeginPopup(POP_UP_ID)) {
-		int count = 0;
-		if (searchStarted) {
-			searchStarted = false;
-			ImGui::SetKeyboardFocusHere();
-		}
-		searchFilter.Draw(" ");
-		for (auto& f : g.allFilters()) {
-			if (searchFilter.PassFilter(f.name.c_str())) {
-				if (ImGui::Selectable(f.name.c_str())) {
-					g.addNode(f);
-					searchFilter.Clear();
-					CloseCurrentPopup();
-				}
-				ImGui::SameLine();
-				ImGui::Text("- %s", f.desc.c_str());
-				if (count++ == 5) { break; }
-			}
-		}
-		ImGui::EndPopup();
-	}
 }
 
 void NodeEditor::handleNodeAddition() {
@@ -380,6 +253,8 @@ void NodeEditor::handleNodeAddition() {
 }
 
 bool NodeEditor::draw(const Preference& pref) {
+	const auto POPUP_NODE_OPTIONS = "Node Options";
+
 	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
 		focused = ImGui::IsWindowFocused();
@@ -413,15 +288,71 @@ bool NodeEditor::draw(const Preference& pref) {
 		// 	}
 		// }
 		// ed::EndDelete();  // Wrap up deletion action
-		ImNodes::MiniMap(0.2, ImNodesMiniMapLocation_BottomRight);
+		ImNodes::MiniMap(0.2f, ImNodesMiniMapLocation_BottomRight);
 		ImNodes::EndNodeEditor();
 
 		int hoveredId;
 		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
 			ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
 			ImNodes::IsNodeHovered(&hoveredId)) {
-			popup.type = POPUP_NODE_OPTIONS;
-			popup.nodeId = {static_cast<IdBaseType>(hoveredId)};
+			selectedNodeId = {hoveredId};
+			ImGui::OpenPopup(POPUP_NODE_OPTIONS);
+		}
+
+		if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
+			auto& node = g.getNode(selectedNodeId);
+			if (ImGui::Selectable("Play till this node")) {
+				selectedNodeId = INVALID_NODE;
+				ImGui::CloseCurrentPopup();
+				auto err = g.play(pref, selectedNodeId);
+				if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
+					showErrorMessage("Missing Input", err.message);
+				} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
+					showErrorMessage("ffmpeg Error", err.message);
+				}
+			}
+			// SameLine();
+			// ImGui::Text("Play till this node");
+			// PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
+			// PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
+			// PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
+			// PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
+			// SPDLOG_INFO("GetStyle().ItemSpacing.x: {}",
+			// GetStyle().ItemSpacing.x); SameLine(); ArrowButton("",
+			// ImGuiDir_Right); PopID(); PopStyleColor(4);
+
+			if (node.option.size() < node.base().options.size()) {
+				if (ImGui::BeginMenu("Add options")) {
+					if (searchStarted) {
+						searchStarted = false;
+						ImGui::SetKeyboardFocusHere();
+					}
+					searchFilter.Draw(" ");
+					int count = 0;
+					int idx = -1;
+					for (const auto& opt : node.base().options) {
+						idx++;
+						if (contains(node.option, idx)) { continue; }
+						if (searchFilter.PassFilter(opt.name.c_str()) ||
+							searchFilter.PassFilter(opt.desc.c_str())) {
+							count++;
+							if (ImGui::MenuItem(opt.name.c_str())) {
+								node.option[idx] = opt.defaultValue;
+								// g.optHook(popup.nodeId, idx,
+								// opt.defaultValue);
+								searchFilter.Clear();
+								selectedNodeId = INVALID_NODE;
+								ImGui::CloseCurrentPopup();
+							}
+							ImGui::SameLine();
+							ImGui::Text(opt.desc);
+						}
+						if (count >= 5) { break; }
+					}
+					ImGui::EndMenu();
+				}
+			}
+			ImGui::EndPopup();
 		}
 
 		{
@@ -444,12 +375,7 @@ bool NodeEditor::draw(const Preference& pref) {
 			}
 		}
 
-		// ed::End();
 		ImNodes::EditorContextSet(nullptr);
-		// ed::SetCurrentEditor(nullptr);
-
-		// searchBar();
-		popups(pref);
 	}
 	ImGui::End();
 	return focused;

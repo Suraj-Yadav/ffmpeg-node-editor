@@ -75,9 +75,8 @@ namespace str {
 	}
 
 	inline bool stoi(std::string_view str, unsigned int& v, int base = 10) {
-		if (base == 16) {
-			if (str::starts_with(str, "0x")) { str.remove_prefix(2); }
-			if (str::starts_with(str, "0X")) { str.remove_prefix(2); }
+		if (base == 16 && str::starts_with(str, "0x", true)) {
+			str.remove_prefix(2);
 		}
 		const auto& end = str.data() + str.size();
 		auto [ptr, ec] = std::from_chars(str.data(), end, v, base);

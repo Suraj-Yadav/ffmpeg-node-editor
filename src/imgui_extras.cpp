@@ -186,6 +186,7 @@ namespace ImGui {
 			}
 		}
 		if (hex[0] == '#') { hex.remove_prefix(1); }
+		if (str::starts_with(hex, "0x", true)) { hex.remove_prefix(2); }
 		if (str::stoi(hex, val, 16)) {
 		} else if (auto itr = std::lower_bound(
 					   COLORS, COLORS_END, str::tolower(hex), compare_colorKey);
@@ -194,7 +195,7 @@ namespace ImGui {
 		} else {
 			return val;
 		}
-		if (val <= 0xFFFFFF) {
+		if (hex.size() <= 6) {
 			r = (val & 0xFF0000) >> 16;
 			g = (val & 0x00FF00) >> 8;
 			b = (val & 0x0000FF);

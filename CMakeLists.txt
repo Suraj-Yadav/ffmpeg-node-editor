@@ -9,7 +9,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
-find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # Import non vcpkg stuff
 add_subdirectory(./imgui)
@@ -36,9 +36,9 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     imgui
     nlohmann_json::nlohmann_json
     spdlog::spdlog
-    tiny-process-library::tiny-process-library 
-    unofficial::nativefiledialog::nfd
+    tiny-process-library::tiny-process-library
 )
+target_include_directories(ffmpeg_node_editor PRIVATE ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS})
 
 
 # Setup Test, coverage and benchmarks

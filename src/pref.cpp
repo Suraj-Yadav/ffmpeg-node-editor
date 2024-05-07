@@ -116,16 +116,17 @@ bool Preference::save() {
 }
 
 void Preference::draw() {
+	if (!show) { return; }
 	using namespace ImGui;
-	if (ImGui::Begin("Edit Preference")) {
-		// BeginVertical("preference");
+	if (ImGui::Begin("Edit Preference", &show)) {
+		BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
 			for (auto& elem : style.colors) {
 				PushID(static_cast<int>(elem.first));
-				// BeginHorizontal(&elem);
+				BeginHorizontal(&elem);
 				Text("%s", StyleColorName(elem.first).data());
-				// Spring();
+				Spring();
 				if (ImVec4 col = ColorConvertU32ToFloat4(elem.second);
 					ColorEdit4(
 						"##col", &col.x,
@@ -136,36 +137,35 @@ void Preference::draw() {
 							ImGuiColorEditFlags_NoTooltip)) {
 					elem.second = ColorConvertFloat4ToU32(col);
 				}
-				// EndHorizontal();
+				EndHorizontal();
 				PopID();
 			}
 		}
-		int id = -1;
-		if (CollapsingHeader("UI"), ImGuiTreeNodeFlags_DefaultOpen) {
+		if (CollapsingHeader("UI", ImGuiTreeNodeFlags_DefaultOpen)) {
 			{
-				// BeginHorizontal(id--);
+				BeginHorizontal(&style.colorPicker);
 				Text("Color Selector");
-				// Spring();
+				Spring();
 				Combo("##picker", &style.colorPicker, "HueBar\0HueWheel\0");
-				// EndHorizontal();
+				EndHorizontal();
 			}
 			{
-				// BeginHorizontal(id--);
+				BeginHorizontal(&font);
 				Text("Font");
-				// Spring();
+				Spring();
 				auto fontStr = font.string();
 				if (InputFont("##font", fontStr)) { font = fontStr; }
-				// EndHorizontal();
+				EndHorizontal();
 			}
 			{
-				// BeginHorizontal(id--);
+				BeginHorizontal(&fontSize);
 				Text("Font Size");
-				// Spring();
+				Spring();
 				DragInt("##fonstsize", &fontSize, 1.0f, 12, 1000);
-				// EndHorizontal();
+				EndHorizontal();
 			}
 			{
-				// BeginHorizontal(id--);
+				BeginHorizontal(&player);
 				Text("Player");
 				if (ImGui::BeginItemTooltip()) {
 					ImGui::Text("Requirements:");
@@ -180,28 +180,29 @@ void Preference::draw() {
 					ImGui::Text("Eg (assuming vlc is in PATH)\n\tvlc\n\t%%f ");
 					ImGui::EndTooltip();
 				}
-				// Spring();
+				Spring();
 				if (InputTextMultiline("##player", &player)) {
 					for (auto& elem : str::split(player, '\n')) {
-						SPDLOG_DEBUG(
-							"elem = {}", std::string(str::strip(elem)));
+						SPDLOG_DEBUG("elem = {}", str::strip(elem));
 					};
 				}
-
-				// EndHorizontal();
+				EndHorizontal();
 			}
 		}
 		{
-			// BeginHorizontal(id--);
-			// Spring();
-			if (Button("Reset")) { *this = {}; }
-			// Spring(0.5);
+			BeginHorizontal(this);
+			Spring();
+			if (Button("Reset")) {
+				*this = {};
+				show = true;
+			}
+			Spring(0.5);
 			if (Button("Save")) { save(); }
-			// Spring();
-			// EndHorizontal();
+			Spring();
+			EndHorizontal();
 		}
 		PopID();
-		// EndVertical();
+		EndVertical();
 	}
 	ImGui::End();
 }

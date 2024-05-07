@@ -1,46 +1,30 @@
 #include "file_utils.hpp"
 
-#include <Windows.h>
-#include <nfd.h>
+#include <portable-file-dialogs.h>
 #include <spdlog/spdlog.h>
-#include <wingdi.h>
-#include <winnt.h>
-#include <winreg.h>
 
-#include <cstddef>
-#include <cstring>
 #include <filesystem>
 #include <string>
 
 std::optional<std::filesystem::path> openFile() {
-	nfdchar_t* outPath = nullptr;
-	nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
-	if (result == NFD_OKAY) {
-		std::filesystem::path v(outPath);
-		free(outPath);
-		return v;
-	} else if (result == NFD_CANCEL) {
-		return {};
-	} else {
-		throw std::runtime_error(NFD_GetError());
-	}
-	return {};
+	auto selection = pfd::open_file("Open File").result();
+	if (selection.empty()) { return {}; }
+	return selection[0];
 }
 std::optional<std::filesystem::path> saveFile() {
-	nfdchar_t* savePath = nullptr;
-	nfdresult_t result = NFD_SaveDialog("json", NULL, &savePath);
-	if (result == NFD_OKAY) {
-		std::filesystem::path v(savePath);
-		if (!v.has_extension()) { v.replace_extension(".json"); }
-		free(savePath);
-		return v;
-	} else if (result == NFD_CANCEL) {
-		return {};
-	} else {
-		throw std::runtime_error(NFD_GetError());
-	}
-	return {};
+	auto selection = pfd::save_file("Save File").result();
+	if (selection.empty()) { return {}; }
+	return selection;
 }
+
+void showErrorMessage(std::string const& title, std::string const& text) {
+	pfd::message(title, text, pfd::choice::ok, pfd::icon::error);
+}
+
+#include <Windows.h>
+#include <wingdi.h>
+#include <winnt.h>
+#include <winreg.h>
 
 std::string GetRegString(
 	HKEY key, std::string_view subKey, std::string_view valueName) {

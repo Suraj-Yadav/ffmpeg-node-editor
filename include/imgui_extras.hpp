@@ -7,6 +7,7 @@
 
 #include "extras/IconsFontAwesome6.h"
 #include "file_utils.hpp"
+#include "util.hpp"
 
 namespace ImGui {
 
@@ -37,7 +38,10 @@ namespace ImGui {
 		return ColorConvertU32ToFloat4(ColorConvertHexToU32(hex));
 	}
 
-	inline auto InputFont(const char* label, std::string& str) {
+	inline bool InputFont(
+		const char* label, std::string& str, float width = -1) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
 		if (InputText(label, &str)) { return true; }
 		Spring(0, 0);
 		if (FontButton(ICON_FA_FONT)) {
@@ -50,7 +54,10 @@ namespace ImGui {
 		return false;
 	}
 
-	inline auto InputFile(const char* label, std::string& str) {
+	inline bool InputFile(
+		const char* label, std::string& str, float width = -1) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
 		if (InputText(label, &str)) { return true; }
 		Spring(0, 0);
 		if (FontButton(ICON_FA_FOLDER_OPEN)) {
@@ -63,7 +70,10 @@ namespace ImGui {
 		return false;
 	}
 
-	inline auto InputColor(const char* label, std::string& str) {
+	inline bool InputColor(
+		const char* label, std::string& str, float width = -1) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
 		if (InputText(label, &str)) { return true; }
 		Spring(0, 0);
 		auto color = ColorConvertHexToFloat4(str);
@@ -80,7 +90,10 @@ namespace ImGui {
 		return false;
 	}
 
-	inline auto InputCheckbox(const char* label, std::string& str) {
+	inline bool InputCheckbox(
+		const char* label, std::string& str, float width = -1) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
 		const int TRUE = 1, FALSE = 0, MAYBE = 2;
 		int v = FALSE;
 		if (str == "1") {

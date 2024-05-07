@@ -31,6 +31,7 @@ struct Preference {
 	std::filesystem::path font;
 	int fontSize;
 	std::string player;
+	bool show = false;
 
 	Preference();
 

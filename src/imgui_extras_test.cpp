@@ -24,6 +24,8 @@ TEST(ColorConvertHexToU32, Simple) {
 	EXPECT_EQ(T{ColorConvertHexToU32("#FF000000")}, T{IM_COL32(255, 0, 0, 0)});
 	EXPECT_EQ(
 		T{ColorConvertHexToU32("#FF00FF")}, T{IM_COL32(255, 0, 255, 255)});
+	EXPECT_EQ(
+		T{ColorConvertHexToU32("#00FF00FF")}, T{IM_COL32(0, 255, 0, 255)});
 }
 
 TEST(ColorConvertHexToU32, Constants) {

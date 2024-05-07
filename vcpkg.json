@@ -5,7 +5,7 @@
     "dependencies": [
         "glfw3",
         "gtest",
-        "nativefiledialog",
+        "portable-file-dialogs",
         "nlohmann-json",
         "spdlog",
         "tiny-process-library"
