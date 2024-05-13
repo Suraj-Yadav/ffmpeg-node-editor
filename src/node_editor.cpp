@@ -2,7 +2,6 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <spdlog/spdlog.h>
 
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -21,20 +20,18 @@ NodeEditor::NodeEditor(const Profile& p, const std::string& n) : g(p), name(n) {
 		ImNodes::EditorContextCreate(), ImNodes::EditorContextFree);
 }
 
-NodeEditor::~NodeEditor() {}
-
 auto InputTextWithCompletion(
 	const char* label, std::string& value,
 	const std::vector<AllowedValues>& allowed) {
 	using namespace ImGui;
-	const auto POPUP_OPTION_COMPLETION = "Completion";
+	constexpr auto POPUP_OPTION_COMPLETION = "Completion";
 
 	const bool isInputTextEnterPressed =
 		InputText(label, &value, ImGuiInputTextFlags_EnterReturnsTrue);
 	const bool isInputTextActive = IsItemActive();
 	const bool isInputTextActivated = IsItemActivated();
 
-	if (isInputTextActivated) OpenPopup(POPUP_OPTION_COMPLETION);
+	if (isInputTextActivated) { OpenPopup(POPUP_OPTION_COMPLETION); }
 
 	SetNextWindowPos(ImVec2(GetItemRectMin().x, GetItemRectMax().y));
 
@@ -42,7 +39,7 @@ auto InputTextWithCompletion(
 			POPUP_OPTION_COMPLETION,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
 				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
-		for (auto& elem : allowed) {
+		for (const auto& elem : allowed) {
 			if (str::contains(elem.value, value, true) ||
 				str::contains(elem.desc, value, true)) {
 				if (Selectable(elem.value.c_str())) { value = elem.value; }
@@ -104,7 +101,7 @@ bool drawOption(
 void drawAttribute(
 	const Style& style, bool isInput, const Socket& skt, const IdBaseType& id,
 	const float& indent = 0) {
-	ImU32 col;
+	ImU32 col = 0;
 	switch (skt.type) {
 		case SocketType::Video:
 			col = style.colors.at(StyleColor::VideoSocket);
@@ -216,14 +213,16 @@ void NodeEditor::drawNode(
 
 	PopID();
 }
+constexpr auto SEARCH_LIMIT = 5;
 
 void NodeEditor::handleNodeAddition() {
-	const auto POP_UP_ID = "add_node_popup";
+	constexpr auto POP_UP_ID = "add_node_popup";
+	constexpr auto PADDING = 8.0f;
 
 	const bool open_popup =
 		ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
 		ImNodes::IsEditorHovered() && ImGui::IsKeyReleased(ImGuiKey_Space);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(PADDING, PADDING));
 	if (!ImGui::IsAnyItemHovered() && open_popup) {
 		ImGui::OpenPopup(POP_UP_ID);
 		searchStarted = true;
@@ -235,7 +234,7 @@ void NodeEditor::handleNodeAddition() {
 			ImGui::SetKeyboardFocusHere();
 		}
 		searchFilter.Draw(" ");
-		for (auto& f : g.allFilters()) {
+		for (const auto& f : g.allFilters()) {
 			if (searchFilter.PassFilter(f.name.c_str())) {
 				if (ImGui::Selectable(f.name.c_str())) {
 					g.addNode(f);
@@ -244,7 +243,7 @@ void NodeEditor::handleNodeAddition() {
 				}
 				ImGui::SameLine();
 				ImGui::Text("- %s", f.desc.c_str());
-				if (count++ == 5) { break; }
+				if (count++ == SEARCH_LIMIT) { break; }
 			}
 		}
 		ImGui::EndPopup();
@@ -253,11 +252,11 @@ void NodeEditor::handleNodeAddition() {
 }
 
 bool NodeEditor::draw(const Preference& pref) {
-	const auto POPUP_NODE_OPTIONS = "Node Options";
+	constexpr auto POPUP_NODE_OPTIONS = "Node Options";
 
 	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
-		focused = ImGui::IsWindowFocused();
+		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 		ImNodes::EditorContextSet(context.get());
 		ImNodes::BeginNodeEditor();
 
@@ -291,7 +290,7 @@ bool NodeEditor::draw(const Preference& pref) {
 		ImNodes::MiniMap(0.2f, ImNodesMiniMapLocation_BottomRight);
 		ImNodes::EndNodeEditor();
 
-		int hoveredId;
+		int hoveredId = INVALID_NODE.val;
 		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
 			ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
 			ImNodes::IsNodeHovered(&hoveredId)) {
@@ -302,7 +301,7 @@ bool NodeEditor::draw(const Preference& pref) {
 		if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
 			auto& node = g.getNode(selectedNodeId);
 			if (ImGui::Selectable("Play till this node")) {
-				selectedNodeId = INVALID_NODE;
+				// selectedNodeId = INVALID_NODE;
 				ImGui::CloseCurrentPopup();
 				auto err = g.play(pref, selectedNodeId);
 				if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
@@ -347,7 +346,7 @@ bool NodeEditor::draw(const Preference& pref) {
 							ImGui::SameLine();
 							ImGui::Text(opt.desc);
 						}
-						if (count >= 5) { break; }
+						if (count >= SEARCH_LIMIT) { break; }
 					}
 					ImGui::EndMenu();
 				}
@@ -356,7 +355,7 @@ bool NodeEditor::draw(const Preference& pref) {
 		}
 
 		{
-			int pin1, pin2;
+			int pin1 = 0, pin2 = 0;
 			if (ImNodes::IsLinkCreated(&pin1, &pin2)) {
 				if (g.canAddLink(
 						{static_cast<IdBaseType>(pin1)},
@@ -369,7 +368,7 @@ bool NodeEditor::draw(const Preference& pref) {
 		}
 
 		{
-			int deletedLinkId;
+			int deletedLinkId = 0;
 			if (ImNodes::IsLinkDestroyed(&deletedLinkId)) {
 				g.deleteLink(LinkId{deletedLinkId});
 			}
@@ -395,7 +394,7 @@ bool NodeEditor::save(const std::filesystem::path& path) const {
 		elem["id"] = id;
 		elem["name"] = node.name;
 		const auto& options = node.base().options;
-		for (auto& [optIdx, optValue] : node.option) {
+		for (const auto& [optIdx, optValue] : node.option) {
 			nlohmann::json opt;
 			opt["key"] = options[optIdx].name;
 			opt["value"] = optValue;
@@ -431,16 +430,16 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 		mapping[id] = nId;
 
 		{
-			const auto& skts = g.getNode(nId).inputSocketIds;
+			const auto& sockets = g.getNode(nId).inputSocketIds;
 			const auto& ints = elem["inputs"].template get<std::vector<int>>();
-			const auto limit = std::min(skts.size(), ints.size());
-			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
+			const auto limit = std::min(sockets.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = sockets[i]; }
 		}
 		{
-			const auto& skts = g.getNode(nId).outputSocketIds;
+			const auto& sockets = g.getNode(nId).outputSocketIds;
 			const auto& ints = elem["outputs"].template get<std::vector<int>>();
-			const auto limit = std::min(skts.size(), ints.size());
-			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
+			const auto limit = std::min(sockets.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = sockets[i]; }
 		}
 		if (elem.find("edges") != elem.end()) {
 			for (const auto& edge : elem["edges"]) {
@@ -455,7 +454,7 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 	return true;
 }
 
-const std::string NodeEditor::getName() const {
+std::string NodeEditor::getName() const {
 	if (!path.empty()) { return path.filename().string(); }
 	return name;
 }

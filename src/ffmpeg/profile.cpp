@@ -1,7 +1,5 @@
 #include "ffmpeg/profile.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -9,6 +7,8 @@
 #include <utility>
 
 #include "ffmpeg/filter.hpp"
+#include "file_utils.hpp"
+#include "pref.hpp"
 #include "string_utils.hpp"
 #include "util.hpp"
 
@@ -138,7 +138,7 @@ class StateStack {
 		}
 		return text;
 	}
-	int checkParent(std::function<bool(std::string_view line)> f) {
+	int checkParent(const std::function<bool(std::string_view line)>& f) {
 		int i = 0;
 		for (auto itr = texts.rbegin(); itr != texts.rend(); itr++, i++) {
 			if (f(*itr)) { return i; }
@@ -155,7 +155,7 @@ class FilterParser {
 	Filter filter;
 	StateStack stack;
 
-	bool isFilterHeader(std::string_view str) {
+	[[nodiscard]] bool isFilterHeader(std::string_view str) const {
 		return str::starts_with(str, "Filter ") &&
 			   str::ends_with(str, filter.name);
 	}
@@ -169,7 +169,8 @@ class FilterParser {
 				filter.dynamicOutput = true;
 			}
 			return true;
-		} else if (str::match(text, SOCKET_REGEX, {name, type})) {
+		}
+		if (str::match(text, SOCKET_REGEX, {name, type})) {
 		} else {
 			return false;
 		}
@@ -287,15 +288,21 @@ const std::vector<Option> OutputNodeOptions = {
 
 Profile GetProfile() {
 	Runner runner;
+	if (runner.lineScanner({"-version"}, nullptr) != 0) {
+		showErrorMessage("Error", "Failed to run ffmpeg");
+		throw std::invalid_argument("Failed to run ffmpeg");
+	}
+
 	Profile profile(runner);
 
 	try {
-		auto json = nlohmann::json::parse(std::ifstream("filters.json"));
+		auto json =
+			nlohmann::json::parse(std::ifstream(path.appDir / "filters.json"));
 		profile.filters = json.template get<std::vector<Filter>>();
 	} catch (nlohmann::json::exception& e) {
 		SPDLOG_ERROR("parse error: {}", e.what());
 		FilterParser p;
-		runner.lineScanner(
+		const auto status = runner.lineScanner(
 			{"-filters"}, [&runner, &p, &profile](std::string_view line) {
 				auto f = p.parseFilter(runner, line);
 				if (f.has_value()) {
@@ -314,12 +321,17 @@ Profile GetProfile() {
 				return true;
 			});
 
+		if (status != 0) {
+			showErrorMessage("Error", "Failed to parse ffmpeg filters");
+			throw std::invalid_argument("Failed to parse ffmpeg filters");
+		}
+
 		std::sort(
 			profile.filters.begin(), profile.filters.end(),
 			[](const auto& a, const auto& b) { return a.name < b.name; });
 
 		nlohmann::json json = profile.filters;
-		std::ofstream o("filters.json", std::ios_base::binary);
+		std::ofstream o(path.appDir / "filters.json", std::ios_base::binary);
 		o << std::setw(4) << json;
 	}
 

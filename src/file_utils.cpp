@@ -1,26 +1,33 @@
 #include "file_utils.hpp"
 
-#include <portable-file-dialogs.h>
-#include <spdlog/spdlog.h>
+#include <tinyfiledialogs/tinyfiledialogs.h>
 
 #include <filesystem>
 #include <string>
 
 std::optional<std::filesystem::path> openFile() {
-	auto selection = pfd::open_file("Open File").result();
-	if (selection.empty()) { return {}; }
-	return selection[0];
+	auto* selection =
+		tinyfd_openFileDialog("Open File", nullptr, 0, nullptr, nullptr, 0);
+	if (selection == nullptr) { return {}; }
+	return selection;
 }
 std::optional<std::filesystem::path> saveFile() {
-	auto selection = pfd::save_file("Save File").result();
-	if (selection.empty()) { return {}; }
+	auto* selection =
+		tinyfd_saveFileDialog("Save File", nullptr, 0, nullptr, nullptr);
+	if (selection == nullptr) { return {}; }
 	return selection;
 }
 
 void showErrorMessage(std::string const& title, std::string const& text) {
-	pfd::message(title, text, pfd::choice::ok, pfd::icon::error);
+	std::string title_copy = title, text_copy = text;
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '`');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '`');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '`');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '`');
+	tinyfd_messageBox(title_copy.c_str(), text_copy.c_str(), "ok", "error", 0);
 }
 
+#ifdef _WIN32
 #include <Windows.h>
 #include <wingdi.h>
 #include <winnt.h>
@@ -65,18 +72,19 @@ std::optional<std::filesystem::path> selectFont() {
 	if (::ChooseFont(&cf) == TRUE) {
 		auto path = GetRegString(
 			HKEY_LOCAL_MACHINE,
-			"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+			R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts)",
 			std::string(cf.lpLogFont->lfFaceName) + " (TrueType)");
 		if (path.empty()) {
 			path = GetRegString(
 				HKEY_CURRENT_USER,
-				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+				R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts)",
 				std::string(cf.lpLogFont->lfFaceName) + " (TrueType)");
 		} else {
-			path = "C:\\Windows\\Fonts\\" + path;
+			path = R"(C:\Windows\Fonts\)" + path;
 		}
 		if (!path.empty() && std::filesystem::exists(path)) { return path; }
 	}
 
 	return {};
 }
+#endif

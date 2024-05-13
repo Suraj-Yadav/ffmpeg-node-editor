@@ -28,7 +28,7 @@ class defer {
 
    public:
 	defer(const action& act) : _action(act) {}
-	defer(const action&& act) : _action(std::move(act)) {}
+	defer(const action&& act) : _action(act) {}
 
 	defer(const defer& act) = delete;
 	defer& operator=(const defer& act) = delete;
@@ -36,3 +36,6 @@ class defer {
 	defer& operator=(defer&& act) = delete;
 	~defer() { _action(); }
 };
+
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#include <spdlog/spdlog.h>

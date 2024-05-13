@@ -5,9 +5,9 @@
     "dependencies": [
         "glfw3",
         "gtest",
-        "portable-file-dialogs",
         "nlohmann-json",
+        "reproc",
         "spdlog",
-        "tiny-process-library"
+        "tinyfiledialogs"
     ]
 }

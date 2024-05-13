@@ -22,9 +22,13 @@ struct Style {
 };
 
 struct Paths {
+	std::filesystem::path appDir;
 	std::filesystem::path prefs;
+	std::string iniFile;
 	Paths();
 };
+
+const Paths path;
 
 struct Preference {
 	Style style;

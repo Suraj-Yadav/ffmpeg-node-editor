@@ -3,7 +3,7 @@
 #include <fmt/core.h>
 #include <imgui.h>
 
-#include <iterator>
+#include <array>
 
 #include "string_utils.hpp"
 
@@ -12,7 +12,7 @@ struct colorKey {
 	ImU32 hex;
 };
 // https://www.w3.org/TR/css-color-3/#svg-color
-const colorKey COLORS[] = {
+constexpr std::array<colorKey, 148> COLORS = {{
 	{"aliceblue", 0xf0f8ff},
 	{"antiquewhite", 0xfaebd7},
 	{"aqua", 0x00ffff},
@@ -161,26 +161,24 @@ const colorKey COLORS[] = {
 	{"whitesmoke", 0xf5f5f5},
 	{"yellow", 0xffff00},
 	{"yellowgreen", 0x9acd32},
-};
+}};
 
-const auto COLORS_END = COLORS + std::size(COLORS);
 bool compare_colorKey(const colorKey& a, const std::string_view& b) {
 	return a.name < b;
-	// _strnicmp(a.name.data(), b.data(), std::min(a.name.size(), b.size())) <
-	// 0;
 }
 
 namespace ImGui {
 	ImU32 ColorConvertHexToU32(std::string_view hex) {
-		ImU32 r = 0, g = 0, b = 0, val = 0, a = 0xff;
+		constexpr auto MAX_VALUE = 0xFF;
+		ImU32 r = 0, g = 0, b = 0, val = 0, a = MAX_VALUE;
 		if (hex.empty()) { return val; }
-		if (auto i = hex.find('@'); i != hex.npos) {
+		if (auto i = hex.find('@'); i != std::string_view::npos) {
 			auto alphaPart = hex.substr(i);
 			alphaPart.remove_prefix(1);
 			hex.remove_suffix(hex.size() - i);
 			if (str::stoi(alphaPart, a, 16)) {
 			} else if (double v = 0; str::stod(alphaPart, v)) {
-				a = (ImU32)(v * 255);
+				a = (ImU32)(v * MAX_VALUE);
 			} else {
 				return val;
 			}
@@ -189,8 +187,9 @@ namespace ImGui {
 		if (str::starts_with(hex, "0x", true)) { hex.remove_prefix(2); }
 		if (str::stoi(hex, val, 16)) {
 		} else if (auto itr = std::lower_bound(
-					   COLORS, COLORS_END, str::tolower(hex), compare_colorKey);
-				   itr != COLORS_END && str::equals(itr->name, hex, true)) {
+					   COLORS.begin(), COLORS.end(), str::tolower(hex),
+					   compare_colorKey);
+				   itr != COLORS.end() && str::equals(itr->name, hex, true)) {
 			val = itr->hex & 0x00FFFFFF;
 		} else {
 			return val;

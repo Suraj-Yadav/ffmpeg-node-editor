@@ -2,13 +2,11 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <spdlog/spdlog.h>
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -31,42 +29,65 @@ Style::Style() : colorPicker(0) {
 }
 
 Preference::Preference()
-	: style(),
-	  font("C:\\Windows\\Fonts\\segoeui.ttf"),
+	:
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+	  font(R"(C:\Windows\Fonts\segoeui.ttf)"),
+#else
+	  font(),
+#endif
 	  fontSize(24),
-	  player("vlc\n%f") {}
+	  player("vlc\n%f") {
+}
 
 Paths::Paths() {
-	auto p = std::getenv("APPDATA");
-	if (p == nullptr) {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+	auto* p = std::getenv("APPDATA");
+	if (p != nullptr) { appDir = p; }
+#elif __linux__ || __unix__ || defined(_POSIX_VERSION)
+	auto* p = std::getenv("HOME");
+	if (p != nullptr) {
+		appDir = std::filesystem::path(p) / ".local" / "share";
+	}
+// #elif __APPLE__
+#else
+#error "Unknown Platform"
+#endif
+	if (appDir.empty()) {
 		SPDLOG_ERROR("Unable to find appdata folder");
 		throw std::invalid_argument("Unable to find appdata folder");
 	}
-	std::filesystem::path root(p);
-	root = root / "ffmpeg-node-editor";
 
-	std::filesystem::create_directories(root);
+	appDir = appDir / "ffmpeg-node-editor";
+	std::filesystem::create_directories(appDir);
 
-	prefs = root / "prefs.json";
+	prefs = appDir / "prefs.json";
+	iniFile = (appDir / "imgui.ini").string();
 }
 
-const Paths path;
-
 std::string_view StyleColorName(StyleColor val) {
-#define CASE(VAL)         \
-	case StyleColor::VAL: \
-		return #VAL
 	switch (val) {
-		CASE(NodeHeader);
-		CASE(NodeBg);
-		CASE(Border);
-		CASE(Wire);
-		CASE(VideoSocket);
-		CASE(AudioSocket);
-		CASE(SubtitleSocket);
+		case StyleColor::NodeHeader:
+			return "NodeHeader";
+		case StyleColor::NodeBg:
+			return "NodeBg";
+		case StyleColor::Border:
+			return "Border";
+		case StyleColor::Wire:
+			return "Wire";
+		case StyleColor::VideoSocket:
+			return "VideoSocket";
+		case StyleColor::AudioSocket:
+			return "AudioSocket";
+		case StyleColor::SubtitleSocket:
+			return "SubtitleSocket";
 	}
-#undef CASE
 	return "";
+}
+
+template <typename T>
+inline void getNull(nlohmann::json& json, std::string_view name, T& dest) {
+	if (json[name].is_null()) { return; }
+	dest = json[name].get<T>();
 }
 
 bool Preference::load() {
@@ -84,16 +105,13 @@ bool Preference::load() {
 			}
 		}
 	}
-#define SET(X, Y, T) \
-	if (!json[X].is_null()) { (Y) = json[X].get<T>(); }
 
-	SET("font", font, std::filesystem::path);
-	SET("font_size", fontSize, int);
-	SET("color_picker", style.colorPicker, int);
-	SET("player", player, std::string);
+	getNull(json, "font", font);
+	getNull(json, "font_size", fontSize);
+	getNull(json, "color_picker", style.colorPicker);
+	getNull(json, "player", player);
 
-#undef SET
-	return true;
+	return false;
 }
 
 bool Preference::save() {
@@ -125,7 +143,7 @@ void Preference::draw() {
 			for (auto& elem : style.colors) {
 				PushID(static_cast<int>(elem.first));
 				BeginHorizontal(&elem);
-				Text("%s", StyleColorName(elem.first).data());
+				Text(StyleColorName(elem.first));
 				Spring();
 				if (ImVec4 col = ColorConvertU32ToFloat4(elem.second);
 					ColorEdit4(
@@ -141,44 +159,49 @@ void Preference::draw() {
 				PopID();
 			}
 		}
+		auto width = 0.0f;
 		if (CollapsingHeader("UI", ImGuiTreeNodeFlags_DefaultOpen)) {
 			{
 				BeginHorizontal(&style.colorPicker);
-				Text("Color Selector");
+				TextUnformatted("Color Selector");
 				Spring();
 				Combo("##picker", &style.colorPicker, "HueBar\0HueWheel\0");
+				width = GetItemRectSize().x;
 				EndHorizontal();
 			}
 			{
 				BeginHorizontal(&font);
-				Text("Font");
+				TextUnformatted("Font");
 				Spring();
 				auto fontStr = font.string();
-				if (InputFont("##font", fontStr)) { font = fontStr; }
+				if (InputFont("##font", fontStr, width)) { font = fontStr; }
 				EndHorizontal();
 			}
 			{
 				BeginHorizontal(&fontSize);
-				Text("Font Size");
+				TextUnformatted("Font Size");
 				Spring();
 				DragInt("##fonstsize", &fontSize, 1.0f, 12, 1000);
 				EndHorizontal();
 			}
 			{
 				BeginHorizontal(&player);
-				Text("Player");
+				TextUnformatted("Player");
 				if (ImGui::BeginItemTooltip()) {
-					ImGui::Text("Requirements:");
-					ImGui::Text("a command to invoke player for preview");
-					ImGui::Text(
+					TextUnformatted("Requirements:");
+					TextUnformatted("a command to invoke player for preview");
+					TextUnformatted(
 						"command should block and wait for user to exit the "
 						"player");
-					ImGui::Text("each argument should be in a separate line");
-					ImGui::Text("do not use \" or ' to quote args with space");
-					ImGui::Text(
-						"use '%%f' to specify where filename should be put");
-					ImGui::Text("Eg (assuming vlc is in PATH)\n\tvlc\n\t%%f ");
-					ImGui::EndTooltip();
+					TextUnformatted(
+						"each argument should be in a separate line");
+					TextUnformatted(
+						"do not use \" or ' to quote args with space");
+					TextUnformatted(
+						"use '%f' to specify where filename should be put");
+					TextUnformatted(
+						"Eg (assuming vlc is in PATH)\n\tvlc\n\t%f ");
+					EndTooltip();
 				}
 				Spring();
 				if (InputTextMultiline("##player", &player)) {

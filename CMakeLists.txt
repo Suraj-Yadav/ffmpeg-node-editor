@@ -7,13 +7,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 find_package(glfw3 REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(reproc CONFIG REQUIRED)
+find_package(reproc++ CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(tiny-process-library CONFIG REQUIRED)
-find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
-
+find_package(tinyfiledialogs CONFIG REQUIRED)
 # Import non vcpkg stuff
 add_subdirectory(./imgui)
-
 
 add_executable(ffmpeg_node_editor 
     src/backend.cpp
@@ -35,23 +34,30 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     glfw 
     imgui
     nlohmann_json::nlohmann_json
+    reproc reproc++
     spdlog::spdlog
-    tiny-process-library::tiny-process-library
+    tinyfiledialogs::tinyfiledialogs
 )
-target_include_directories(ffmpeg_node_editor PRIVATE ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS})
-
 
 # Setup Test, coverage and benchmarks
 find_package(GTest CONFIG REQUIRED)
 
 SET(TEST_SRCS
-    src/imgui_extras.cpp
+    src/ffmpeg/runner_test.cpp
+    src/ffmpeg/runner.cpp
     src/imgui_extras_test.cpp
+    src/imgui_extras.cpp
     src/string_utils.cpp
     src/util_test.cpp
 )
 
 add_executable(tests ${TEST_SRCS})
 target_include_directories(tests PUBLIC "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(tests PRIVATE GTest::gtest GTest::gtest_main imgui spdlog::spdlog)
+target_link_libraries(tests PRIVATE 
+    GTest::gtest 
+    GTest::gtest_main 
+    imgui 
+    reproc reproc++
+    spdlog::spdlog
+)
 

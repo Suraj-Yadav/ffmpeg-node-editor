@@ -10,7 +10,6 @@
 #include "pref.hpp"
 
 struct MenuItem {
-	std::string_view root;
 	std::string_view name;
 	int id;
 	ImGuiKey key = ImGuiKey_None;
@@ -23,12 +22,13 @@ class BackendWrapperGlfw3OpenGL3 {
 	std::string glsl_version;
 	GLFWwindow* window;
 	ImGuiContext* ctx;
-	std::vector<MenuItem> menu;
+	std::vector<std::pair<std::string_view, std::vector<MenuItem>>> menu;
 
    public:
 	bool InitWindow(ImGuiConfigFlags flags, const Preference& pref);
 	void Setup();
-	void SetupMenuBar(const std::initializer_list<MenuItem>&);
+	void AddMenu(
+		std::string_view menuName, const std::initializer_list<MenuItem>&);
 	int DrawMenu();
 	bool IsNewFrameAvailable();
 	void Render(const ImVec4& clear_color);

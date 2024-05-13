@@ -4,7 +4,7 @@ FetchContent_Declare(imgui_stack
 GIT_REPOSITORY https://github.com/thedmd/imgui.git
 GIT_TAG feature/layout
 )
-FetchContent_MakeAvailable(imgui_stack)
+FetchContent_Populate(imgui_stack)
 
 FetchContent_Declare(imnodes
     GIT_REPOSITORY https://github.com/Nelarius/imnodes.git

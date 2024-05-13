@@ -13,7 +13,7 @@ namespace str {
 				current = std::string_view(current.data(), current.size() + 1);
 			}
 		}
-		if (!current.empty()) array.push_back(current);
+		if (!current.empty()) { array.push_back(current); }
 		return array;
 	}
 
@@ -26,7 +26,7 @@ namespace str {
 			return false;
 		}
 		size_t i = 1;
-		for (auto& elem : dest) {
+		for (const auto& elem : dest) {
 			if (i >= parts.size()) { return false; }
 			elem.get() = std::string_view(parts[i].first, parts[i].length());
 			i++;

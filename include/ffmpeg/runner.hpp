@@ -2,9 +2,8 @@
 
 #include <filesystem>
 #include <functional>
+#include <utility>
 #include <vector>
-
-#include "pref.hpp"
 
 using LineScannerCallback = std::function<bool(std::string_view line)>;
 
@@ -13,12 +12,13 @@ class Runner {
 
    public:
 	Runner() : path("ffmpeg") {}
-	Runner(std::filesystem::path p) : path(p) {}
+	Runner(std::filesystem::path p) : path(std::move(p)) {}
 	int lineScanner(
 		std::vector<std::string> args, LineScannerCallback cb,
 		bool readStdErr = false) const;
 
 	std::pair<int, std::string> play(
-		const Preference& pref, const std::vector<std::string>& inputs,
-		std::string_view filter, const std::vector<std::string>& outputs) const;
+		const std::vector<std::string>& inputs, std::string_view filter,
+		const std::vector<std::string>& outputs,
+		const std::string& player) const;
 };

@@ -25,6 +25,9 @@ namespace ImGui {
 		return CalcTextSize(str.c_str());
 	}
 	inline void Text(const std::string& str) { TextUnformatted(str.c_str()); }
+	inline void Text(const std::string_view& str) {
+		TextUnformatted(str.data(), str.data() + str.size());
+	}
 
 	// Below functions this application specific
 	ImU32 ColorConvertHexToU32(std::string_view hex);
@@ -40,6 +43,7 @@ namespace ImGui {
 
 	inline bool InputFont(
 		const char* label, std::string& str, float width = -1) {
+#ifdef _WIN32
 		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
 		defer w([&]() { PopItemWidth(); });
 		if (InputText(label, &str)) { return true; }
@@ -52,6 +56,9 @@ namespace ImGui {
 			}
 		}
 		return false;
+#else
+		return InputText(label, &str);
+#endif
 	}
 
 	inline bool InputFile(

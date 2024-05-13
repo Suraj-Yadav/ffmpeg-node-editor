@@ -1,6 +1,5 @@
 #include <fmt/core.h>
 #include <imgui.h>
-#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <filesystem>
@@ -11,6 +10,7 @@
 #include "file_utils.hpp"
 #include "node_editor.hpp"
 #include "pref.hpp"
+#include "util.hpp"
 
 enum MenuAction {
 	MenuActionNone = 0,
@@ -21,6 +21,8 @@ enum MenuAction {
 };
 
 int main() {
+	spdlog::set_level(spdlog::level::trace);
+
 	std::set_terminate([]() {
 		auto excPtr = std::current_exception();
 		try {
@@ -49,17 +51,18 @@ int main() {
 
 	// Setup Platform/Renderer backends
 	backend.Setup();
-	backend.SetupMenuBar({
-		{"File", "New", MenuActionNew, ImGuiKey_N, true},
-		{"File", "Open..", MenuActionOpen, ImGuiKey_O, true},
-		{"File", "Save", MenuActionSave, ImGuiKey_S, true},
-		{"File", "Preferences", MenuActionPreference, ImGuiKey_Comma, true},
-	});
+	backend.AddMenu(
+		"File", {
+					{"New", MenuActionNew, ImGuiKey_N, true},
+					{"Open..", MenuActionOpen, ImGuiKey_O, true},
+					{"Save", MenuActionSave, ImGuiKey_S, true},
+					{"Preferences", MenuActionPreference, ImGuiKey_Comma, true},
+				});
 
-	auto ctx = ImNodes::CreateContext();
+	auto* ctx = ImNodes::CreateContext();
 
 	// Our state
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	constexpr ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
@@ -79,6 +82,7 @@ int main() {
 				if (auto path = openFile(); path.has_value()) {
 					auto itr = std::find_if(
 						editors.begin(), editors.end(), [&](const auto& e) {
+							if (e.getPath().empty()) { return false; }
 							return std::filesystem::equivalent(
 								e.getPath(), path.value());
 						});

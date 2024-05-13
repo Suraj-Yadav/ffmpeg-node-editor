@@ -20,11 +20,12 @@ STRONG_TYPEDEF(LinkId, IdBaseType);
 const NodeId INVALID_NODE{0};
 const LinkId INVALID_LINK{0};
 
-class FilterNode {
+struct FilterNode {
 	std::reference_wrapper<const Filter> ref;
 
-   public:
 	std::string name;
+
+   public:
 	std::map<int, std::string> option;
 	std::vector<NodeId> inputSocketIds;
 	std::vector<NodeId> outputSocketIds;
@@ -33,15 +34,15 @@ class FilterNode {
 
 	FilterNode(const Filter& f) : ref(f), name(f.name) {}
 
-	const std::vector<Socket>& input() const {
+	[[nodiscard]] const std::vector<Socket>& input() const {
 		if (base().dynamicInput) { return inputSockets; }
 		return ref.get().input;
 	}
-	const std::vector<Socket>& output() const {
+	[[nodiscard]] const std::vector<Socket>& output() const {
 		if (base().dynamicOutput) { return outputSockets; }
 		return ref.get().output;
 	}
-	const Filter& base() const { return ref; }
+	[[nodiscard]] const Filter& base() const { return ref; }
 };
 
 struct Link {

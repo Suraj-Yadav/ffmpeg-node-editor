@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <limits>
 #include <regex>
 #include <string_view>
 
@@ -41,18 +42,18 @@ namespace str {
 					   haystack.begin(), haystack.end(), needle.begin(),
 					   needle.end(), ignore_case_cmp) != haystack.end();
 		}
-		return haystack.find(needle) != haystack.npos;
+		return haystack.find(needle) != std::string_view::npos;
 	}
 
 	inline std::string_view strip_leading(std::string_view str) {
-		while (!str.empty() && std::isspace(str.front())) {
+		while (!str.empty() && str::isspace(str.front())) {
 			str.remove_prefix(1);
 		}
 		return str;
 	}
 
 	inline std::string_view strip_trialing(std::string_view str) {
-		while (!str.empty() && std::isspace(str.back())) {
+		while (!str.empty() && str::isspace(str.back())) {
 			str.remove_suffix(1);
 		}
 		return str;
@@ -73,7 +74,6 @@ namespace str {
 	inline std::string_view strip(std::string_view str) {
 		return strip_leading(strip_trialing(str));
 	}
-
 	inline bool stoi(std::string_view str, unsigned int& v, int base = 10) {
 		if (base == 16 && str::starts_with(str, "0x", true)) {
 			str.remove_prefix(2);
@@ -94,7 +94,7 @@ namespace str {
 
 	inline std::string tolower(std::string_view str) {
 		std::string result(str);
-		for (auto& ch : result) { ch = std::tolower(ch); }
+		for (auto& ch : result) { ch = std::tolower(ch, std::locale()); }
 		return result;
 	}
 

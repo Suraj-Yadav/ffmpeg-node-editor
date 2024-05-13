@@ -8,7 +8,7 @@
 
 enum class NodeIterOrder { Default, Topological };
 
-class Profile;
+struct Profile;
 
 using EdgeIterCallback =
 	std::function<void(const LinkId& id, const NodeId& u, const NodeId& v)>;
@@ -45,27 +45,28 @@ struct FilterGraphError {
 class FilterGraph {
 	std::vector<FilterNode> nodes;
 	GraphState state;
-	const Profile& profile;
+	const Profile* profile;
 
    public:
-	FilterGraph(const Profile& p) : profile(p) {}
+	FilterGraph(const Profile& p) : profile(&p) {}
 
-	const NodeId addNode(const Filter& filter);
+	NodeId addNode(const Filter& filter);
 	void deleteNode(NodeId id);
 	void deleteLink(LinkId id);
-	bool canAddLink(NodeId u, NodeId v) const;
-	const LinkId addLink(NodeId u, NodeId v);
+	[[nodiscard]] bool canAddLink(NodeId u, NodeId v) const;
+	LinkId addLink(NodeId u, NodeId v);
 
 	void optHook(const NodeId& id, const int& optId, const std::string& value);
 
 	void iterateNodes(
-		NodeIterCallback cb, NodeIterOrder order = NodeIterOrder::Default,
+		const NodeIterCallback& cb,
+		NodeIterOrder order = NodeIterOrder::Default,
 		NodeId u = INVALID_NODE) const;
 
-	void iterateLinks(EdgeIterCallback cb) const;
+	void iterateLinks(const EdgeIterCallback& cb) const;
 
-	void inputSockets(NodeId u, InputSocketCallback cb) const;
-	void outputSockets(NodeId u, OutputSocketCallback cb) const;
+	void inputSockets(NodeId u, const InputSocketCallback& cb) const;
+	void outputSockets(NodeId u, const OutputSocketCallback& cb) const;
 
 	const FilterNode& getNode(NodeId id) const;
 	FilterNode& getNode(NodeId id);

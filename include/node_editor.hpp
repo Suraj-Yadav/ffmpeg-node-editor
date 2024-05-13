@@ -11,8 +11,8 @@
 #include "ffmpeg/filter_graph.hpp"
 #include "pref.hpp"
 
-class FilterNode;
-class Profile;
+struct FilterNode;
+struct Profile;
 
 struct Popup {
 	std::string_view type;
@@ -34,7 +34,6 @@ class NodeEditor {
 	NodeId selectedNodeId = INVALID_NODE;
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
-	void searchBar();
 	void handleNodeAddition();
 
 	std::string name;
@@ -42,11 +41,10 @@ class NodeEditor {
 
    public:
 	NodeEditor(const Profile& p, const std::string& n);
-	~NodeEditor();
-	const std::string getName() const;
-	const std::filesystem::path& getPath() const { return path; };
+	[[nodiscard]] std::string getName() const;
+	[[nodiscard]] const std::filesystem::path& getPath() const { return path; };
+	[[nodiscard]] bool save(const std::filesystem::path& path) const;
 	void setPath(std::filesystem::path& p) { path = p; };
 	bool draw(const Preference& pref);
-	bool save(const std::filesystem::path& path) const;
 	bool load(const std::filesystem::path& path);
 };
