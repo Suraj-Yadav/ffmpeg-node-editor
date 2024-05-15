@@ -11,8 +11,9 @@ find_package(reproc CONFIG REQUIRED)
 find_package(reproc++ CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tinyfiledialogs CONFIG REQUIRED)
+
 # Import non vcpkg stuff
-add_subdirectory(./imgui)
+add_subdirectory(./third_party)
 
 add_executable(ffmpeg_node_editor 
     src/backend.cpp
@@ -33,23 +34,24 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     ${OPENGL_gl_LIBRARY}
     glfw 
     imgui
+    IconFontCppHeaders
     nlohmann_json::nlohmann_json
     reproc reproc++
     spdlog::spdlog
     tinyfiledialogs::tinyfiledialogs
-)
-
-# Setup Test, coverage and benchmarks
-find_package(GTest CONFIG REQUIRED)
-
-SET(TEST_SRCS
+    )
+    
+    # Setup Test, coverage and benchmarks
+    find_package(GTest CONFIG REQUIRED)
+    
+    SET(TEST_SRCS
     src/ffmpeg/runner_test.cpp
     src/ffmpeg/runner.cpp
     src/imgui_extras_test.cpp
     src/imgui_extras.cpp
     src/string_utils.cpp
     src/util_test.cpp
-)
+    )
 
 add_executable(tests ${TEST_SRCS})
 target_include_directories(tests PUBLIC "${CMAKE_SOURCE_DIR}/include")
@@ -57,6 +59,7 @@ target_link_libraries(tests PRIVATE
     GTest::gtest 
     GTest::gtest_main 
     imgui 
+    IconFontCppHeaders
     reproc reproc++
     spdlog::spdlog
 )

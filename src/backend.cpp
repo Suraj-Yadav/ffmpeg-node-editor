@@ -7,8 +7,8 @@
 #include <array>
 #include <iostream>
 
-#include "extras/IconsFontAwesome6.h"
-#include "extras/IconsFontAwesome6.h_fa-solid-900.ttf.h"
+#include "IconsFontAwesome6.h"
+#include "IconsFontAwesome6.h_fa-solid-900.ttf.h"
 
 constexpr std::array<ImWchar, 3> icons_ranges{ICON_MIN_FA, ICON_MAX_16_FA, 0};
 

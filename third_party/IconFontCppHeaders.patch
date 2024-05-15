@@ -1,0 +1,26 @@
+diff --git a/GenerateIconFontCppHeaders.py b/GenerateIconFontCppHeaders.py
+index 0bb25dd..644de1d 100644
+--- a/GenerateIconFontCppHeaders.py
++++ b/GenerateIconFontCppHeaders.py
+@@ -650,7 +650,7 @@ class LanguageC( Language ):
+                                    '// from font {ttf_file}\n' + \
+                                    '// Requires #include <stdint.h>\n\n' + \
+                                    '#pragma once\n\n' + \
+-                                   'static const uint8_t s_{name}_ttf[{size}] = \n{{'
++                                   'static uint8_t s_{name}_ttf[{size}] = \n{{'
+                 result = tmpl_prelude_ttf.format( lang = cls.language_name,
+                                                   ttf_file = ttf[ 2 ],
+                                                   name = str( ttf[ 1 ][ :-len('.ttf') ].replace( '-', '_' ).replace( ' ', '' )),
+@@ -894,9 +894,9 @@ class LanguageGo( Language ):
+ # Main
+ 
+ 
+-fonts = [ FontFA4, FontFA5, FontFA5Brands, FontFA5Pro, FontFA5ProBrands, FontFA6, FontFA6Brands, FontFK, FontMD, FontMS, FontMDI, FontKI, FontFAD, FontCI, FontLC ]
+-languages = [ LanguageC, LanguageCSharp, LanguagePython, LanguageRust, LanguageGo ]
+-ttf2headerC = False # convert ttf files to C and C++ headers
++fonts = [ FontFA6 ]
++languages = [ LanguageC ]
++ttf2headerC = True # convert ttf files to C and C++ headers
+ 
+ logging.basicConfig( format='%(levelname)s : %(message)s', level = logging.WARNING )
+ 

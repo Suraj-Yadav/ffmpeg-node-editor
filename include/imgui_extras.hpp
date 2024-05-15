@@ -5,7 +5,7 @@
 
 #include <string>
 
-#include "extras/IconsFontAwesome6.h"
+#include "IconsFontAwesome6.h"
 #include "file_utils.hpp"
 #include "util.hpp"
 
