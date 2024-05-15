@@ -2,6 +2,7 @@
 
 #include <tinyfiledialogs/tinyfiledialogs.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 

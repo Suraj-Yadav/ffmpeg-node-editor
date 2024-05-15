@@ -39,19 +39,19 @@ target_link_libraries(ffmpeg_node_editor PRIVATE
     reproc reproc++
     spdlog::spdlog
     tinyfiledialogs::tinyfiledialogs
-    )
+)
     
-    # Setup Test, coverage and benchmarks
-    find_package(GTest CONFIG REQUIRED)
-    
-    SET(TEST_SRCS
+# Setup Test, coverage and benchmarks
+find_package(GTest CONFIG REQUIRED)
+
+SET(TEST_SRCS
     src/ffmpeg/runner_test.cpp
     src/ffmpeg/runner.cpp
     src/imgui_extras_test.cpp
     src/imgui_extras.cpp
     src/string_utils.cpp
     src/util_test.cpp
-    )
+)
 
 add_executable(tests ${TEST_SRCS})
 target_include_directories(tests PUBLIC "${CMAKE_SOURCE_DIR}/include")

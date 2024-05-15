@@ -21,8 +21,6 @@ enum MenuAction {
 };
 
 int main() {
-	spdlog::set_level(spdlog::level::trace);
-
 	std::set_terminate([]() {
 		auto excPtr = std::current_exception();
 		try {

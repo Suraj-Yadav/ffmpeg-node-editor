@@ -37,7 +37,7 @@ target_sources(
 )
     
 target_include_directories(
-    imgui PUBLIC 
+    imgui SYSTEM PUBLIC 
     ${imgui_stack_SOURCE_DIR}
     ${imgui_stack_SOURCE_DIR}/backends
     ${imgui_stack_SOURCE_DIR}/misc/cpp
@@ -53,4 +53,4 @@ execute_process(
 )
     
 add_library(IconFontCppHeaders INTERFACE)
-target_include_directories(IconFontCppHeaders INTERFACE "${icon_fonts_SOURCE_DIR}")
+target_include_directories(IconFontCppHeaders SYSTEM INTERFACE "${icon_fonts_SOURCE_DIR}")

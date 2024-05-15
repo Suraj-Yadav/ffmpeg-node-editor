@@ -132,7 +132,12 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	for (const auto& o : outputs) { args.insert(args.end(), {"-map", o}); }
-	args.insert(args.end(), {"-y", tempPath.string()});
+	if (inputs.empty()) {
+		// If input is empty add a hard limit of 5 min for now
+		args.insert(args.end(), {"-y", "-t", "300", tempPath.string()});
+	} else {
+		args.insert(args.end(), {"-y", tempPath.string()});
+	}
 
 	reproc::options options;
 	options.redirect.err.type = reproc::redirect::pipe;
