@@ -91,12 +91,12 @@ namespace {
 	}
 
 	void deleteVertex(GraphState& state, IdBaseType u) {
-		if (state.vertIdToNodeIndex[u] == u) {
-			for (auto& v : state.adjList[u]) { deleteVertex(state, v); }
-			for (auto& v : state.revAdjList[u]) { deleteVertex(state, v); }
-		} else {
+		if (state.isSocket[u]) {
 			for (auto& v : state.adjList[u]) { deleteEdge(state, u, v); }
 			for (auto& v : state.revAdjList[u]) { deleteEdge(state, v, u); }
+		} else {
+			for (auto& v : state.adjList[u]) { deleteVertex(state, v); }
+			for (auto& v : state.revAdjList[u]) { deleteVertex(state, v); }
 		}
 		state.valid[u] = false;
 	}
@@ -233,7 +233,7 @@ void FilterGraph::optHook(
 					   contains(c.oNames, option.name);
 			});
 		itr != count.end()) {
-		if (auto count = std::stoi(value)) {
+		if (int count = 0; str::stoi(value, count)) {
 			auto selector = itr->selector.empty() ? base.name : itr->selector;
 			if (itr->isInput) {
 				newInputs = getNewSockets(count, selector);

@@ -86,11 +86,9 @@ namespace ImGui {
 		auto color = ColorConvertHexToFloat4(str);
 		if (ColorEdit4(
 				"##col", &color.x,
-				ImGuiColorEditFlags_NoTooltip |
-					ImGuiColorEditFlags_AlphaPreviewHalf |
+				ImGuiColorEditFlags_AlphaPreviewHalf |
 					ImGuiColorEditFlags_AlphaBar |
-					ImGuiColorEditFlags_NoOptions |
-					ImGuiColorEditFlags_NoInputs)) {
+					ImGuiColorEditFlags_NoOptions)) {
 			str = ColorConvertFloat4ToHex(color);
 			return true;
 		}

@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
+#include <imnodes.h>
 
 #include <cstdlib>
 #include <filesystem>
@@ -16,13 +17,13 @@
 Style::Style() : colorPicker(0) {
 	using namespace ImGui;
 
-	// ed::Style v;
-	colors[StyleColor::NodeHeader] = IM_COL32(255, 0, 0, 255);
-	// colors[StyleColor::NodeBg] =
-	// 	ColorConvertFloat4ToU32(v.Colors[ed::StyleColor_NodeBg]);
-	// colors[StyleColor::Border] =
-	// 	ColorConvertFloat4ToU32(v.Colors[ed::StyleColor_NodeBorder]);
-	// colors[Wire] = v.Colors[ed::StyleColor_];
+	ImNodesStyle style;
+	ImNodes::StyleColorsDark(&style);
+
+	colors[StyleColor::NodeHeader] = style.Colors[ImNodesCol_TitleBar];
+	colors[StyleColor::NodeBg] = style.Colors[ImNodesCol_NodeBackground];
+	colors[StyleColor::Border] = style.Colors[ImNodesCol_NodeOutline];
+	colors[StyleColor::Wire] = style.Colors[ImNodesCol_Link];
 	colors[StyleColor::VideoSocket] = IM_COL32(255, 0, 0, 255);
 	colors[StyleColor::AudioSocket] = IM_COL32(0, 255, 0, 255);
 	colors[StyleColor::SubtitleSocket] = IM_COL32(0, 0, 255, 255);
@@ -133,26 +134,22 @@ bool Preference::save() {
 	return true;
 }
 
-void Preference::draw() {
-	if (!show) { return; }
+bool Preference::draw() {
+	if (!show) { return false; }
 	using namespace ImGui;
+	bool changed = false;
 	if (ImGui::Begin("Edit Preference", &show)) {
 		BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
 			for (auto& elem : style.colors) {
-				PushID(static_cast<int>(elem.first));
+				PushID(&elem);
 				BeginHorizontal(&elem);
 				Text(StyleColorName(elem.first));
 				Spring();
 				if (ImVec4 col = ColorConvertU32ToFloat4(elem.second);
-					ColorEdit4(
-						"##col", &col.x,
-						(style.colorPicker == 0
-							 ? ImGuiColorEditFlags_PickerHueBar
-							 : ImGuiColorEditFlags_PickerHueWheel) |
-							ImGuiColorEditFlags_NoInputs |
-							ImGuiColorEditFlags_NoTooltip)) {
+					ColorEdit4("##col", &col.x)) {
+					changed = true;
 					elem.second = ColorConvertFloat4ToU32(col);
 				}
 				EndHorizontal();
@@ -165,7 +162,10 @@ void Preference::draw() {
 				BeginHorizontal(&style.colorPicker);
 				TextUnformatted("Color Selector");
 				Spring();
-				Combo("##picker", &style.colorPicker, "HueBar\0HueWheel\0");
+				if (Combo(
+						"##picker", &style.colorPicker, "HueBar\0HueWheel\0")) {
+					changed = true;
+				}
 				width = GetItemRectSize().x;
 				EndHorizontal();
 			}
@@ -218,6 +218,7 @@ void Preference::draw() {
 			if (Button("Reset")) {
 				*this = {};
 				show = true;
+				changed = true;
 			}
 			Spring(0.5);
 			if (Button("Save")) { save(); }
@@ -228,4 +229,21 @@ void Preference::draw() {
 		EndVertical();
 	}
 	ImGui::End();
+	return changed;
+}
+
+void Preference::setOptions() const {
+	ImNodesStyle& imNodesStyle = ImNodes::GetStyle();
+	imNodesStyle.Colors[ImNodesCol_TitleBar] =
+		style.colors.at(StyleColor::NodeHeader);
+	imNodesStyle.Colors[ImNodesCol_NodeBackground] =
+		style.colors.at(StyleColor::NodeBg);
+	imNodesStyle.Colors[ImNodesCol_NodeOutline] =
+		style.colors.at(StyleColor::Border);
+	imNodesStyle.Colors[ImNodesCol_Link] = style.colors.at(StyleColor::Wire);
+
+	ImGui::SetColorEditOptions(
+		(style.colorPicker == 0 ? ImGuiColorEditFlags_PickerHueBar
+								: ImGuiColorEditFlags_PickerHueWheel) |
+		ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
 }

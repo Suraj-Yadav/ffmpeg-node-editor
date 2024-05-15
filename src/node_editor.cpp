@@ -215,13 +215,16 @@ void NodeEditor::drawNode(
 }
 constexpr auto SEARCH_LIMIT = 5;
 
-void NodeEditor::handleNodeAddition() {
+void handleNodeAddition(
+	FilterGraph& g, bool& searchStarted, ImGuiTextFilter& searchFilter) {
 	constexpr auto POP_UP_ID = "add_node_popup";
 	constexpr auto PADDING = 8.0f;
 
+	const auto& io = ImGui::GetIO();
+
 	const bool open_popup =
-		ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-		ImNodes::IsEditorHovered() && ImGui::IsKeyReleased(ImGuiKey_Space);
+		ImGui::IsKeyReleased(ImGuiKey_Space) && !io.WantTextInput;
+
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(PADDING, PADDING));
 	if (!ImGui::IsAnyItemHovered() && open_popup) {
 		ImGui::OpenPopup(POP_UP_ID);
@@ -230,6 +233,7 @@ void NodeEditor::handleNodeAddition() {
 	if (ImGui::BeginPopup(POP_UP_ID)) {
 		int count = 0;
 		if (searchStarted) {
+			searchFilter.Clear();
 			searchStarted = false;
 			ImGui::SetKeyboardFocusHere();
 		}
@@ -251,21 +255,124 @@ void NodeEditor::handleNodeAddition() {
 	ImGui::PopStyleVar();
 }
 
-bool NodeEditor::draw(const Preference& pref) {
-	constexpr auto POPUP_NODE_OPTIONS = "Node Options";
+void handleNodeDeletion(FilterGraph& g) {
+	const auto& io = ImGui::GetIO();
+	auto deleteSomething =
+		ImGui::IsKeyReleased(ImGuiKey_X) && !io.WantTextInput;
+	if (!deleteSomething) { return; }
 
+	std::vector<int> selected;
+	selected.resize(ImNodes::NumSelectedNodes(), 0);
+	if (!selected.empty()) {
+		ImNodes::GetSelectedNodes(selected.data());
+		for (auto& id : selected) { g.deleteNode({id}); }
+	}
+
+	selected.resize(ImNodes::NumSelectedLinks(), 0);
+	if (!selected.empty()) {
+		ImNodes::GetSelectedLinks(selected.data());
+		for (auto& id : selected) { g.deleteLink({id}); }
+	}
+}
+
+void drawNodeOptions(
+	FilterGraph& g, FilterNode& node, bool& searchStarted,
+	ImGuiTextFilter& searchFilter, NodeId& selectedNodeId) {
+	if (ImGui::BeginMenu("Add options")) {
+		if (searchStarted) {
+			searchFilter.Clear();
+			searchStarted = false;
+			ImGui::SetKeyboardFocusHere();
+		}
+		searchFilter.Draw(" ");
+		int count = 0;
+		int idx = -1;
+		for (const auto& opt : node.base().options) {
+			idx++;
+			if (contains(node.option, idx)) { continue; }
+			if (searchFilter.PassFilter(opt.name.c_str()) ||
+				searchFilter.PassFilter(opt.desc.c_str())) {
+				count++;
+				if (ImGui::MenuItem(opt.name.c_str())) {
+					node.option[idx] = opt.defaultValue;
+					g.optHook(selectedNodeId, idx, opt.defaultValue);
+					searchFilter.Clear();
+					selectedNodeId = INVALID_NODE;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				ImGui::Text(opt.desc);
+			}
+			if (count >= SEARCH_LIMIT) { break; }
+		}
+		ImGui::EndMenu();
+	}
+}
+
+void handleNodeOptions(
+	FilterGraph& g, NodeId& selectedNodeId, const Preference& pref,
+	bool& searchStarted, ImGuiTextFilter& searchFilter) {
+	constexpr auto POPUP_NODE_OPTIONS = "Node Options";
+	int hoveredId = INVALID_NODE.val;
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+		ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+		ImNodes::IsNodeHovered(&hoveredId)) {
+		selectedNodeId = {hoveredId};
+		ImGui::OpenPopup(POPUP_NODE_OPTIONS);
+	}
+
+	if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
+		auto& node = g.getNode(selectedNodeId);
+		if (ImGui::Selectable("Play till this node")) {
+			// selectedNodeId = INVALID_NODE;
+			ImGui::CloseCurrentPopup();
+			auto err = g.play(pref, selectedNodeId);
+			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
+				showErrorMessage("Missing Input", err.message);
+			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
+				showErrorMessage("ffmpeg Error", err.message);
+			}
+		}
+
+		if (node.option.size() < node.base().options.size()) {
+			drawNodeOptions(
+				g, node, searchStarted, searchFilter, selectedNodeId);
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void handleLinks(FilterGraph& g) {
+	int pin1 = 0, pin2 = 0;
+	if (ImNodes::IsLinkCreated(&pin1, &pin2)) {
+		if (g.canAddLink(
+				{static_cast<IdBaseType>(pin1)},
+				{static_cast<IdBaseType>(pin2)})) {
+			g.addLink(
+				{static_cast<IdBaseType>(pin1)},
+				{static_cast<IdBaseType>(pin2)});
+		}
+	}
+
+	int deletedLinkId = 0;
+	if (ImNodes::IsLinkDestroyed(&deletedLinkId)) {
+		g.deleteLink(LinkId{deletedLinkId});
+	}
+}
+
+void NodeEditor::handleEdits(const Preference& pref) {
+	handleNodeAddition(g, searchStarted, searchFilter);
+	handleNodeDeletion(g);
+	handleNodeOptions(g, selectedNodeId, pref, searchStarted, searchFilter);
+	handleLinks(g);
+}
+
+bool NodeEditor::draw(const Preference& pref) {
 	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
 		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 		ImNodes::EditorContextSet(context.get());
 		ImNodes::BeginNodeEditor();
-
-		handleNodeAddition();
-
-		ImNodesStyle& style = ImNodes::GetStyle();
-		style.Colors[ImNodesCol_TitleBar] =
-			pref.style.colors.at(StyleColor::NodeHeader);
-		style.PinCircleRadius = 5;
 
 		g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
 			drawNode(pref.style, node, id);
@@ -275,104 +382,10 @@ bool NodeEditor::draw(const Preference& pref) {
 			ImNodes::Link(id.val, s.val, d.val);
 		});
 
-		// // Handle deletion action
-		// if (ed::BeginDelete()) {
-		// 	// There may be many links marked for deletion, let's loop over
-		// 	// them.
-		// 	ed::NodeId deletedNodeId;
-		// 	while (ed::QueryDeletedNode(&deletedNodeId)) {
-		// 		if (ed::AcceptDeletedItem(false)) {
-		// 			g.deleteNode(NodeId{deletedNodeId.Get()});
-		// 		}
-		// 	}
-		// }
-		// ed::EndDelete();  // Wrap up deletion action
 		ImNodes::MiniMap(0.2f, ImNodesMiniMapLocation_BottomRight);
 		ImNodes::EndNodeEditor();
 
-		int hoveredId = INVALID_NODE.val;
-		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-			ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
-			ImNodes::IsNodeHovered(&hoveredId)) {
-			selectedNodeId = {hoveredId};
-			ImGui::OpenPopup(POPUP_NODE_OPTIONS);
-		}
-
-		if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
-			auto& node = g.getNode(selectedNodeId);
-			if (ImGui::Selectable("Play till this node")) {
-				// selectedNodeId = INVALID_NODE;
-				ImGui::CloseCurrentPopup();
-				auto err = g.play(pref, selectedNodeId);
-				if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
-					showErrorMessage("Missing Input", err.message);
-				} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
-					showErrorMessage("ffmpeg Error", err.message);
-				}
-			}
-			// SameLine();
-			// ImGui::Text("Play till this node");
-			// PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
-			// PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
-			// PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
-			// PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
-			// SPDLOG_INFO("GetStyle().ItemSpacing.x: {}",
-			// GetStyle().ItemSpacing.x); SameLine(); ArrowButton("",
-			// ImGuiDir_Right); PopID(); PopStyleColor(4);
-
-			if (node.option.size() < node.base().options.size()) {
-				if (ImGui::BeginMenu("Add options")) {
-					if (searchStarted) {
-						searchStarted = false;
-						ImGui::SetKeyboardFocusHere();
-					}
-					searchFilter.Draw(" ");
-					int count = 0;
-					int idx = -1;
-					for (const auto& opt : node.base().options) {
-						idx++;
-						if (contains(node.option, idx)) { continue; }
-						if (searchFilter.PassFilter(opt.name.c_str()) ||
-							searchFilter.PassFilter(opt.desc.c_str())) {
-							count++;
-							if (ImGui::MenuItem(opt.name.c_str())) {
-								node.option[idx] = opt.defaultValue;
-								// g.optHook(popup.nodeId, idx,
-								// opt.defaultValue);
-								searchFilter.Clear();
-								selectedNodeId = INVALID_NODE;
-								ImGui::CloseCurrentPopup();
-							}
-							ImGui::SameLine();
-							ImGui::Text(opt.desc);
-						}
-						if (count >= SEARCH_LIMIT) { break; }
-					}
-					ImGui::EndMenu();
-				}
-			}
-			ImGui::EndPopup();
-		}
-
-		{
-			int pin1 = 0, pin2 = 0;
-			if (ImNodes::IsLinkCreated(&pin1, &pin2)) {
-				if (g.canAddLink(
-						{static_cast<IdBaseType>(pin1)},
-						{static_cast<IdBaseType>(pin2)})) {
-					g.addLink(
-						{static_cast<IdBaseType>(pin1)},
-						{static_cast<IdBaseType>(pin2)});
-				}
-			}
-		}
-
-		{
-			int deletedLinkId = 0;
-			if (ImNodes::IsLinkDestroyed(&deletedLinkId)) {
-				g.deleteLink(LinkId{deletedLinkId});
-			}
-		}
+		if (focused) { handleEdits(pref); }
 
 		ImNodes::EditorContextSet(nullptr);
 	}

@@ -74,7 +74,10 @@ namespace str {
 	inline std::string_view strip(std::string_view str) {
 		return strip_leading(strip_trialing(str));
 	}
-	inline bool stoi(std::string_view str, unsigned int& v, int base = 10) {
+
+	template <typename T>
+	inline bool stoi(std::string_view str, T& v, int base = 10) {
+		static_assert(std::is_integral<T>::value, "T must be integral");
 		if (base == 16 && str::starts_with(str, "0x", true)) {
 			str.remove_prefix(2);
 		}
@@ -83,13 +86,12 @@ namespace str {
 		return ptr == end && ec == std::errc();
 	}
 
-	inline bool stod(std::string_view str, double& v) {
-		v = std::numeric_limits<double>::infinity();
-		v = std::stod(std::string(str), nullptr);
-		return true;
-		// const auto& end = str.data() + str.size();
-		// auto [ptr, ec] = std::from_chars(str.data(), end, v);
-		// return ptr == end && ec == std::errc();
+	template <typename T> inline bool stod(std::string_view str, T& v) {
+		static_assert(
+			std::is_floating_point<T>::value, "T must be floating point");
+		const auto& end = str.data() + str.size();
+		auto [ptr, ec] = std::from_chars(str.data(), end, v);
+		return ptr == end && ec == std::errc();
 	}
 
 	inline std::string tolower(std::string_view str) {

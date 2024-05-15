@@ -39,7 +39,8 @@ struct Preference {
 
 	Preference();
 
+	void setOptions() const;
 	bool load();
 	bool save();
-	void draw();
+	bool draw();
 };

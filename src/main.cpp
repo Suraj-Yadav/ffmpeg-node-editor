@@ -67,10 +67,10 @@ int main() {
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
 	int focusedEditor = -1;
-
+	pref.setOptions();
 	// Main loop
 	while (backend.IsNewFrameAvailable()) {
-		MenuAction menuAction = static_cast<MenuAction>(backend.DrawMenu());
+		auto menuAction = static_cast<MenuAction>(backend.DrawMenu());
 		switch (menuAction) {
 			case MenuActionNew: {
 				editors.emplace_back(
@@ -128,7 +128,7 @@ int main() {
 			if (editors[i].draw(pref)) { focusedEditor = i; };
 		}
 
-		pref.draw();
+		if (pref.draw()) { pref.setOptions(); }
 
 		// Rendering
 		backend.Render(clear_color);

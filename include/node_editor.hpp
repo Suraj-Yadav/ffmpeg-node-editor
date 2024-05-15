@@ -34,7 +34,7 @@ class NodeEditor {
 	NodeId selectedNodeId = INVALID_NODE;
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
-	void handleNodeAddition();
+	void handleEdits(const Preference& pref);
 
 	std::string name;
 	std::filesystem::path path;
