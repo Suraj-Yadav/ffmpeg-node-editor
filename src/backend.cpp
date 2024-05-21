@@ -28,6 +28,7 @@ bool BackendWrapperGlfw3OpenGL3::InitWindow(
 
 	float highDPIscaleFactor = 1.0;
 #ifdef _WIN32
+	glfwWindowHint(GLFW_WIN32_KEYBOARD_MENU, GLFW_TRUE);
 	// if it's a HighDPI monitor, try to scale everything
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 	float xScale = 1, yScale = 1;

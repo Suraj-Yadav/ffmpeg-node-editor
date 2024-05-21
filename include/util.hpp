@@ -38,4 +38,4 @@ class defer {
 };
 
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-#include <spdlog/spdlog.h>
+#include <spdlog/spdlog.h>	// IWYU pragma: export
