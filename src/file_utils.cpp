@@ -3,8 +3,11 @@
 #include <tinyfiledialogs/tinyfiledialogs.h>
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <string>
+#include <string_utils.hpp>
+#include <string_view>
 
 std::optional<std::filesystem::path> openFile() {
 	auto* selection =
@@ -12,10 +15,15 @@ std::optional<std::filesystem::path> openFile() {
 	if (selection == nullptr) { return {}; }
 	return selection;
 }
-std::optional<std::filesystem::path> saveFile() {
+std::optional<std::filesystem::path> saveFile(std::string_view fileType) {
+	std::array<const char*, 1> type;
+	type[0] = fileType.data();
 	auto* selection =
-		tinyfd_saveFileDialog("Save File", nullptr, 0, nullptr, nullptr);
+		tinyfd_saveFileDialog("Save File", nullptr, 1, type.data(), nullptr);
 	if (selection == nullptr) { return {}; }
+	fileType.remove_prefix(1);
+	if (str::ends_with(selection, fileType)) { return selection; }
+	return selection + std::string(fileType);
 	return selection;
 }
 

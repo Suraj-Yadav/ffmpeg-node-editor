@@ -54,10 +54,10 @@ class Application {
 		if (focusedEditor != -1) {
 			auto& editor = editors[focusedEditor];
 			if (!editor.getPath().empty()) {
-				editor.save(editor.getPath());
+				(void)editor.save(editor.getPath());
 			} else {
-				if (auto path = saveFile(); path.has_value()) {
-					editor.save(path.value());
+				if (auto path = saveFile("*.json"); path.has_value()) {
+					(void)editor.save(path.value());
 					editor.setPath(path.value());
 				} else {
 					SPDLOG_DEBUG("User pressed cancel");
