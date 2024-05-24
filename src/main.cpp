@@ -3,6 +3,7 @@
 #include <imnodes.h>
 
 #include <algorithm>
+#include <backward.hpp>
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
@@ -145,17 +146,11 @@ class Application {
 	}
 };
 
-int main() {
-	std::set_terminate([]() {
-		auto exception = std::current_exception();
-		try {
-			if (exception) { std::rethrow_exception(exception); }
-		} catch (const std::exception& e) {
-			SPDLOG_CRITICAL("Unhandled exception {}\n", e.what());
-		}
-		std::abort();
-	});
+namespace backward {
+	backward::SignalHandling sh;
+}
 
+int main() {
 	Application app;
 
 	app.main();

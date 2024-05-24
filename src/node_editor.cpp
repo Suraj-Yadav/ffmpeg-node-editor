@@ -458,9 +458,7 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			for (const auto& edge : elem["edges"]) {
 				const auto& src = edge["src"].template get<int>();
 				const auto& dest = edge["dest"].template get<int>();
-				if (src != INVALID_NODE.val) {
-					g.addLink(mapping[src], mapping[dest]);
-				}
+				g.addLink(mapping[src], mapping[dest]);
 			}
 		}
 	}

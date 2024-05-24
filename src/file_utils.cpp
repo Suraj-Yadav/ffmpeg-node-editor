@@ -16,8 +16,7 @@ std::optional<std::filesystem::path> openFile() {
 	return selection;
 }
 std::optional<std::filesystem::path> saveFile(std::string_view fileType) {
-	std::array<const char*, 1> type;
-	type[0] = fileType.data();
+	std::array<const char*, 1> type{fileType.data()};
 	auto* selection =
 		tinyfd_saveFileDialog("Save File", nullptr, 1, type.data(), nullptr);
 	if (selection == nullptr) { return {}; }

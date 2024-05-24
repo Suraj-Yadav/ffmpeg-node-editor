@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ffmpeg/filter.hpp"
+#include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
 #include "ffmpeg/runner.hpp"
 #include "node_editor.hpp"
@@ -315,6 +316,7 @@ NodeId FilterGraph::addNode(const Filter& filter) {
 }
 
 LinkId FilterGraph::addLink(NodeId uu, NodeId vv) {
+	if (uu == INVALID_NODE || vv == INVALID_NODE) { return INVALID_LINK; }
 	auto u = getU(uu), v = getU(vv);
 	if (!canAddEdge(state, nodes, u, v)) { return INVALID_LINK; }
 	if (state.isInput[u]) { std::swap(u, v); }
