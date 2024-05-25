@@ -26,7 +26,7 @@ enum MenuAction {
 class Application {
 	Preference pref;
 	Profile profile;
-	BackendWrapperGlfw3OpenGL3 backend;
+
 	ImNodesContext* ctx;
 	std::vector<NodeEditor> editors;
 	int untitledCount = 0;
@@ -70,7 +70,7 @@ class Application {
 	}
 
 	void handleMenu() {
-		auto menuAction = static_cast<MenuAction>(backend.DrawMenu());
+		auto menuAction = static_cast<MenuAction>(Window::DrawMenu());
 		switch (menuAction) {
 			case MenuActionNew:
 				editors.emplace_back(
@@ -95,16 +95,18 @@ class Application {
 	}
 
    public:
-	Application() : profile(GetProfile()), backend() {
-		if (!backend.InitWindow(ImGuiConfigFlags_NavEnableKeyboard, pref)) {
+	Application() : profile(GetProfile()) {
+		pref.load();
+
+		if (!Window::InitWindow(ImGuiConfigFlags_NavEnableKeyboard, pref)) {
 			throw std::runtime_error("Unable to initialize window");
 		}
 		// Setup Dear ImGui style
 		ImGui::StyleColorsDark();
 
 		// Setup Platform/Renderer backends
-		backend.Setup();
-		backend.AddMenu(
+		Window::Setup();
+		Window::AddMenu(
 			"File",
 			{
 				{"New", MenuActionNew, ImGuiKey_N, true},
@@ -124,13 +126,12 @@ class Application {
 	Application& operator=(Application&&) = delete;
 
 	~Application() {
-		// Cleanup
 		ImNodes::DestroyContext(ctx);
-		backend.Shutdown();
+		Window::Shutdown();
 	}
 
 	void main() {
-		while (backend.IsNewFrameAvailable()) {
+		while (Window::IsNewFrameAvailable()) {
 			handleMenu();
 
 			focusedEditor = -1;
@@ -141,19 +142,17 @@ class Application {
 			if (pref.draw()) { pref.setOptions(); }
 
 			constexpr ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-			backend.Render(clear_color);
+			Window::Render(clear_color);
 		}
 	}
 };
 
 namespace backward {
-	backward::SignalHandling sh;
+	const backward::SignalHandling sh;
 }
 
 int main() {
 	Application app;
-
 	app.main();
-
 	return 0;
 }

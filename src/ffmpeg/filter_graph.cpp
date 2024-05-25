@@ -506,7 +506,9 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	int status = 0;
 	// this is needed
 	auto filterString = fmt::to_string(buff);
-	if (filterString.back() == ';') { filterString.pop_back(); }
+	if (!filterString.empty() && filterString.back() == ';') {
+		filterString.pop_back();
+	}
 	std::tie(status, err.message) =
 		profile->runner.play(inputs, filterString, out, pref.player);
 	if (status != 0) { err.code = FilterGraphErrorCode::PLAYER_RUNTIME; }

@@ -21,6 +21,8 @@ add_subdirectory(./third_party)
 add_executable(
   ffmpeg_node_editor
   src/backend.cpp
+  src/backend_opengl.cpp
+  src/backend_win32_d3d12.cpp
   src/ffmpeg/filter_graph.cpp
   src/ffmpeg/profile.cpp
   src/ffmpeg/runner.cpp
@@ -47,7 +49,15 @@ target_link_libraries(
           spdlog::spdlog
           tinyfiledialogs::tinyfiledialogs)
 
-target_link_libraries()
+if(MSVC AND FALSE)
+  target_compile_definitions(ffmpeg_node_editor
+                             PUBLIC FFMPEG_NODE_EDITOR_USE_WIN32_D3D12)
+  target_link_libraries(ffmpeg_node_editor PRIVATE d3d12.lib d3dcompiler.lib
+                                                   dxgi.lib)
+else()
+  target_compile_definitions(ffmpeg_node_editor
+                             PUBLIC FFMPEG_NODE_EDITOR_USE_GLFW_OPENGL)
+endif()
 
 # Setup Test, coverage and benchmarks
 find_package(GTest CONFIG REQUIRED)

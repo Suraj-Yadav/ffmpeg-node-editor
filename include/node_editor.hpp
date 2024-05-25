@@ -40,7 +40,7 @@ class NodeEditor {
 	std::filesystem::path path;
 
    public:
-	NodeEditor(const Profile& p, const std::string& n);
+	NodeEditor(const Profile& p, std::string n);
 	[[nodiscard]] std::string getName() const;
 	[[nodiscard]] const std::filesystem::path& getPath() const { return path; };
 	[[nodiscard]] bool save(const std::filesystem::path& path) const;

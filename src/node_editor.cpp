@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
@@ -15,7 +16,8 @@
 #include "string_utils.hpp"
 #include "util.hpp"
 
-NodeEditor::NodeEditor(const Profile& p, const std::string& n) : g(p), name(n) {
+NodeEditor::NodeEditor(const Profile& p, std::string n)
+	: g(p), name(std::move(n)) {
 	context = std::shared_ptr<ImNodesEditorContext>(
 		ImNodes::EditorContextCreate(), ImNodes::EditorContextFree);
 }
@@ -99,10 +101,10 @@ bool drawOption(
 }
 
 void drawAttribute(
-	const Style& style, bool isInput, const Socket& skt, const IdBaseType& id,
-	const float& indent = 0) {
+	const Style& style, bool isInput, const Socket& socket,
+	const IdBaseType& id, const float& indent = 0) {
 	ImU32 col = 0;
-	switch (skt.type) {
+	switch (socket.type) {
 		case SocketType::Video:
 			col = style.colors.at(StyleColor::VideoSocket);
 			break;
@@ -119,7 +121,7 @@ void drawAttribute(
 	} else {
 		ImNodes::BeginOutputAttribute(id);
 	}
-	ImGui::Text(skt.name);
+	ImGui::Text(socket.name);
 	if (isInput) {
 		ImNodes::EndInputAttribute();
 	} else {
@@ -368,6 +370,7 @@ void NodeEditor::handleEdits(const Preference& pref) {
 }
 
 bool NodeEditor::draw(const Preference& pref) {
+	constexpr auto minimapFraction = 0.2f;
 	auto focused = false;
 	if (ImGui::Begin(getName().c_str())) {
 		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
@@ -382,7 +385,7 @@ bool NodeEditor::draw(const Preference& pref) {
 			ImNodes::Link(id.val, s.val, d.val);
 		});
 
-		ImNodes::MiniMap(0.2f, ImNodesMiniMapLocation_BottomRight);
+		ImNodes::MiniMap(minimapFraction, ImNodesMiniMapLocation_BottomRight);
 		ImNodes::EndNodeEditor();
 
 		if (focused) { handleEdits(pref); }

@@ -29,8 +29,10 @@ target_sources(
           ${imgui_stack_SOURCE_DIR}/imgui_draw.cpp
           ${imgui_stack_SOURCE_DIR}/imgui_tables.cpp
           ${imgui_stack_SOURCE_DIR}/imgui_widgets.cpp
+          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
           ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
           ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_win32.cpp
           ${imgui_stack_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
           ${imnodes_SOURCE_DIR}/imnodes.cpp)
 

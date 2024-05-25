@@ -5,7 +5,6 @@
 
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include "pref.hpp"
 
@@ -17,14 +16,7 @@ struct MenuItem {
 	std::string shortcut;
 };
 
-class BackendWrapperGlfw3OpenGL3 {
-	// Data
-	std::string glsl_version;
-	GLFWwindow* window;
-	ImGuiContext* ctx;
-	std::vector<std::pair<std::string_view, std::vector<MenuItem>>> menu;
-
-   public:
+namespace Window {
 	bool InitWindow(ImGuiConfigFlags flags, const Preference& pref);
 	void Setup();
 	void AddMenu(
@@ -33,4 +25,4 @@ class BackendWrapperGlfw3OpenGL3 {
 	bool IsNewFrameAvailable();
 	void Render(const ImVec4& clear_color);
 	void Shutdown();
-};
+};	// namespace Window

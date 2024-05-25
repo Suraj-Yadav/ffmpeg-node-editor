@@ -42,8 +42,9 @@ Preference::Preference()
 
 Paths::Paths() {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-	auto* p = std::getenv("APPDATA");
-	if (p != nullptr) { appDir = p; }
+	char* p = nullptr;
+	size_t len = 0;
+	if (_dupenv_s(&p, &len, "APPDATA") == 0) { appDir = p; }
 #elif __linux__ || __unix__ || defined(_POSIX_VERSION)
 	auto* p = std::getenv("HOME");
 	if (p != nullptr) {
