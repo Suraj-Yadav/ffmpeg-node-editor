@@ -54,16 +54,7 @@ class Application {
 	void saveEditor() {
 		if (focusedEditor != -1) {
 			auto& editor = editors[focusedEditor];
-			if (!editor.getPath().empty()) {
-				(void)editor.save(editor.getPath());
-			} else {
-				if (auto path = saveFile("*.json"); path.has_value()) {
-					(void)editor.save(path.value());
-					editor.setPath(path.value());
-				} else {
-					SPDLOG_DEBUG("User pressed cancel");
-				}
-			}
+			(void)editor.save();
 		} else {
 			showErrorMessage("No Active Editor", "No Editor is active");
 		}
@@ -136,7 +127,12 @@ class Application {
 
 			focusedEditor = -1;
 			for (auto i = 0; i < editors.size(); ++i) {
-				if (editors[i].draw(pref)) { focusedEditor = i; }
+				auto [focused, open] = editors[i].draw(pref);
+				if (focused) { focusedEditor = i; }
+				if (!open) {
+					std::swap(editors[i], editors.back());
+					editors.pop_back();
+				}
 			}
 
 			if (pref.draw()) { pref.setOptions(); }

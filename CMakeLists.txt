@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-project(ffmpeg_node_editor LANGUAGES CXX)
+project(ffmpeg_node_editor LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS
@@ -13,7 +13,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(reproc CONFIG REQUIRED)
 find_package(reproc++ CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(tinyfiledialogs CONFIG REQUIRED)
 
 # Import non vcpkg stuff
 add_subdirectory(./third_party)
@@ -47,7 +46,7 @@ target_link_libraries(
           reproc
           reproc++
           spdlog::spdlog
-          tinyfiledialogs::tinyfiledialogs)
+          tinyfiledialogs)
 
 if(MSVC AND FALSE)
   target_compile_definitions(ffmpeg_node_editor

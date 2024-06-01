@@ -112,7 +112,7 @@ bool Preference::load() {
 	getNull(json, "font_size", fontSize);
 	getNull(json, "color_picker", style.colorPicker);
 	getNull(json, "player", player);
-
+	unsaved = false;
 	return false;
 }
 
@@ -132,6 +132,7 @@ bool Preference::save() {
 
 	std::ofstream o(path.prefs, std::ios_base::binary);
 	o << std::setw(4) << obj;
+	unsaved = false;
 	return true;
 }
 
@@ -139,7 +140,7 @@ bool Preference::draw() {
 	if (!show) { return false; }
 	using namespace ImGui;
 	bool changed = false;
-	if (ImGui::Begin("Edit Preference", &show)) {
+	if (ImGui::Begin("Edit Preference", &show, UnsavedDocumentFlag(unsaved))) {
 		BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
@@ -230,6 +231,23 @@ bool Preference::draw() {
 		EndVertical();
 	}
 	ImGui::End();
+	unsaved = unsaved || changed;
+
+	switch (UnsavedDocumentClose(
+		unsaved, show, "Unsaved Preference Changes",
+		"Do you want to save current preferences?")) {
+		case UnsavedDocumentAction::SAVE_CHANGES:
+			save();
+			break;
+		case UnsavedDocumentAction::CANCEL_CLOSE:
+			show = true;
+			break;
+		case UnsavedDocumentAction::DISCARD_CHANGES:
+			load();
+			break;
+		case UnsavedDocumentAction::NO_OP:
+			break;
+	}
 	return changed;
 }
 

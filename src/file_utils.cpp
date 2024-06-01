@@ -1,6 +1,6 @@
 #include "file_utils.hpp"
 
-#include <tinyfiledialogs/tinyfiledialogs.h>
+#include <tinyfiledialogs.h>
 
 #include <algorithm>
 #include <array>
@@ -33,6 +33,17 @@ void showErrorMessage(std::string const& title, std::string const& text) {
 	std::replace(text_copy.begin(), text_copy.end(), '\'', '`');
 	std::replace(text_copy.begin(), text_copy.end(), '"', '`');
 	tinyfd_messageBox(title_copy.c_str(), text_copy.c_str(), "ok", "error", 0);
+}
+
+int showActionDialog(
+	std::string const& title, std::string const& text, std::string_view type) {
+	std::string title_copy = title, text_copy = text;
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '`');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '`');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '`');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '`');
+	return tinyfd_messageBox(
+		title_copy.c_str(), text_copy.c_str(), "yesnocancel", "question", 0);
 }
 
 #ifdef _WIN32

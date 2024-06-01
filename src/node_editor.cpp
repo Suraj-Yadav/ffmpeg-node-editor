@@ -369,10 +369,13 @@ void NodeEditor::handleEdits(const Preference& pref) {
 	handleLinks(g);
 }
 
-bool NodeEditor::draw(const Preference& pref) {
+std::pair<bool, bool> NodeEditor::draw(const Preference& pref) {
 	constexpr auto minimapFraction = 0.2f;
 	auto focused = false;
-	if (ImGui::Begin(getName().c_str())) {
+	auto open = true;
+	if (ImGui::Begin(
+			getName().c_str(), &open,
+			ImGui::UnsavedDocumentFlag(g.changed()))) {
 		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 		ImNodes::EditorContextSet(context.get());
 		ImNodes::BeginNodeEditor();
@@ -393,7 +396,21 @@ bool NodeEditor::draw(const Preference& pref) {
 		ImNodes::EditorContextSet(nullptr);
 	}
 	ImGui::End();
-	return focused;
+	switch (ImGui::UnsavedDocumentClose(
+		g.changed(), open, "Unsaved Graph",
+		"Do you want to save the current graph?")) {
+		case ImGui::UnsavedDocumentAction::SAVE_CHANGES:
+			(void)save();
+			break;
+		case ImGui::UnsavedDocumentAction::DISCARD_CHANGES:
+			break;
+		case ImGui::UnsavedDocumentAction::CANCEL_CLOSE:
+			open = true;
+			break;
+		case ImGui::UnsavedDocumentAction::NO_OP:
+			break;
+	}
+	return {focused, open};
 }
 
 namespace nlohmann {
@@ -402,7 +419,12 @@ namespace nlohmann {
 	};
 }  // namespace nlohmann
 
-bool NodeEditor::save(const std::filesystem::path& path) const {
+bool NodeEditor::save() {
+	if (getPath().empty()) {
+		auto path = saveFile("*.json");
+		if (!path.has_value()) { return false; }
+		setPath(path.value());
+	}
 	nlohmann::json obj;
 	obj["nodes"] = nlohmann::json::array();
 	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
@@ -465,6 +487,7 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			}
 		}
 	}
+	g.resetChanged();
 	this->path = std::filesystem::absolute(path);
 	name = path.filename().string();
 	return true;

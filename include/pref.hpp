@@ -36,6 +36,7 @@ struct Preference {
 	int fontSize;
 	std::string player;
 	bool show = false;
+	bool unsaved = false;
 
 	Preference();
 

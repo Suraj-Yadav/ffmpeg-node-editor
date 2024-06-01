@@ -119,4 +119,27 @@ namespace ImGui {
 		return false;
 	}
 
+	inline int UnsavedDocumentFlag(
+		bool unsaved, int flag = ImGuiWindowFlags_None) {
+		if (unsaved) { return flag | ImGuiWindowFlags_UnsavedDocument; }
+		return flag;
+	}
+
+	enum class UnsavedDocumentAction {
+		NO_OP,
+		SAVE_CHANGES,
+		CANCEL_CLOSE,
+		DISCARD_CHANGES
+	};
+
+	inline UnsavedDocumentAction UnsavedDocumentClose(
+		bool unsaved, bool open, std::string const& title,
+		std::string const& text) {
+		if (open || !unsaved) { return UnsavedDocumentAction::NO_OP; }
+		auto result = showActionDialog(title, text);
+		if (result == 0) { return UnsavedDocumentAction::CANCEL_CLOSE; }
+		if (result == 1) { return UnsavedDocumentAction::SAVE_CHANGES; }
+		if (result == 2) { return UnsavedDocumentAction::DISCARD_CHANGES; }
+		return UnsavedDocumentAction::NO_OP;
+	}
 }  // namespace ImGui

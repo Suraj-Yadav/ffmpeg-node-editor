@@ -7,7 +7,6 @@
         "gtest",
         "nlohmann-json",
         "reproc",
-        "spdlog",
-        "tinyfiledialogs"
+        "spdlog"
     ]
 }

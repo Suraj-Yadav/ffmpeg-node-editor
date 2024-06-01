@@ -57,6 +57,7 @@ namespace {
 		state.isInput.emplace_back(isInput);
 		state.isSocket.emplace_back(isSocket);
 		state.vertIdToSocketIndex.emplace_back(socketIndex);
+		state.changed = true;
 		return id;
 	}
 
@@ -83,12 +84,14 @@ namespace {
 		if (contains(state.revAdjList[v], u)) { return false; }
 		state.revAdjList[v].push_back(u);
 		state.adjList[u].push_back(v);
+		state.changed = true;
 		return true;
 	}
 
 	void deleteEdge(GraphState& state, IdBaseType u, IdBaseType v) {
 		erase(state.revAdjList[v], u);
 		erase(state.adjList[u], v);
+		state.changed = true;
 	}
 
 	void deleteVertex(GraphState& state, IdBaseType u) {
@@ -100,6 +103,7 @@ namespace {
 			for (auto& v : state.revAdjList[u]) { deleteVertex(state, v); }
 		}
 		state.valid[u] = false;
+		state.changed = true;
 	}
 	std::vector<Socket> getMediaInfo(const Runner& r, const std::string& path) {
 		std::vector<Socket> sockets;
@@ -156,6 +160,7 @@ namespace {
 			if (deleteOldSocket) { deleteVertex(state, getU(oldIds[i])); }
 		}
 		oldIds = newIds;
+		state.changed = true;
 	}
 
 	void dfs(
@@ -292,6 +297,7 @@ void FilterGraph::optHook(
 			node.outputSocketIds, false);
 		node.outputSockets = newOutputs.value();
 	}
+	state.changed = true;
 }
 
 NodeId FilterGraph::addNode(const Filter& filter) {
@@ -522,4 +528,5 @@ const std::vector<Filter>& FilterGraph::allFilters() const {
 void FilterGraph::clear() {
 	nodes.clear();
 	state = GraphState{};
+	state.changed = true;
 }

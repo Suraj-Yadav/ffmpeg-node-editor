@@ -23,6 +23,7 @@ using OutputSocketCallback =
 	std::function<void(const Socket&, const NodeId& id)>;
 
 struct GraphState {
+	bool changed = false;
 	std::vector<bool> valid;
 	std::vector<bool> isSocket;
 	std::vector<bool> isInput;
@@ -68,13 +69,16 @@ class FilterGraph {
 	void inputSockets(NodeId u, const InputSocketCallback& cb) const;
 	void outputSockets(NodeId u, const OutputSocketCallback& cb) const;
 
-	const FilterNode& getNode(NodeId id) const;
+	[[nodiscard]] const FilterNode& getNode(NodeId id) const;
 	FilterNode& getNode(NodeId id);
 
-	const std::vector<Filter>& allFilters() const;
+	[[nodiscard]] const std::vector<Filter>& allFilters() const;
 
 	void clear();
 
 	FilterGraphError play(
 		const Preference& pref, const NodeId& id = INVALID_NODE);
+
+	[[nodiscard]] bool changed() const { return state.changed; }
+	void resetChanged() { state.changed = false; }
 };

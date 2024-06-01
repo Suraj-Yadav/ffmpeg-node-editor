@@ -1,5 +1,6 @@
 include(FetchContent)
 
+# imgui
 FetchContent_Declare(
   imgui_stack
   GIT_REPOSITORY https://github.com/thedmd/imgui.git
@@ -12,14 +13,6 @@ FetchContent_Declare(
   GIT_TAG master
   GIT_SUBMODULES img)
 FetchContent_Populate(imnodes)
-
-FetchContent_Declare(
-  icon_fonts
-  GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
-  GIT_TAG main
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/IconFontCppHeaders.patch
-  UPDATE_DISCONNECTED 1)
-FetchContent_Populate(icon_fonts)
 
 add_library(imgui STATIC)
 target_sources(
@@ -44,6 +37,15 @@ target_include_directories(
 find_package(glfw3 REQUIRED)
 target_link_libraries(imgui PRIVATE glfw)
 
+# Icons
+FetchContent_Declare(
+  icon_fonts
+  GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
+  GIT_TAG main
+  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/IconFontCppHeaders.patch
+  UPDATE_DISCONNECTED 1)
+FetchContent_Populate(icon_fonts)
+
 execute_process(
   COMMAND python3 "${icon_fonts_SOURCE_DIR}/GenerateIconFontCppHeaders.py"
   WORKING_DIRECTORY "${icon_fonts_SOURCE_DIR}")
@@ -51,3 +53,14 @@ execute_process(
 add_library(IconFontCppHeaders INTERFACE)
 target_include_directories(IconFontCppHeaders SYSTEM
                            INTERFACE "${icon_fonts_SOURCE_DIR}")
+
+# tinyfiledialogs
+FetchContent_Declare(
+  tfd
+  GIT_REPOSITORY https://git.code.sf.net/p/tinyfiledialogs/code
+  GIT_TAG master)
+FetchContent_Populate(tfd)
+
+add_library(tinyfiledialogs STATIC)
+target_sources(tinyfiledialogs PRIVATE ${tfd_SOURCE_DIR}/tinyfiledialogs.c)
+target_include_directories(tinyfiledialogs SYSTEM PUBLIC ${tfd_SOURCE_DIR})
