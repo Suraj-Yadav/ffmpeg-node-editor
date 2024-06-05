@@ -3,7 +3,9 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
+#include <algorithm>
 #include <fstream>
+#include <iterator>
 #include <nlohmann/json.hpp>
 #include <utility>
 
@@ -326,13 +328,14 @@ void handleNodeOptions(
 	if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
 		auto& node = g.getNode(selectedNodeId);
 		if (ImGui::Selectable("Play till this node")) {
-			// selectedNodeId = INVALID_NODE;
 			ImGui::CloseCurrentPopup();
 			auto err = g.play(pref, selectedNodeId);
 			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
 				showErrorMessage("Missing Input", err.message);
+				SPDLOG_ERROR("Error while playing: {}", err.message);
 			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
 				showErrorMessage("ffmpeg Error", err.message);
+				SPDLOG_ERROR("Error while playing: {}", err.message);
 			}
 		}
 
@@ -427,26 +430,29 @@ bool NodeEditor::save() {
 	}
 	nlohmann::json obj;
 	obj["nodes"] = nlohmann::json::array();
-	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
-		nlohmann::json elem;
-		elem["id"] = id;
-		elem["name"] = node.name;
-		const auto& options = node.base().options;
-		for (const auto& [optIdx, optValue] : node.option) {
-			nlohmann::json opt;
-			opt["key"] = options[optIdx].name;
-			opt["value"] = optValue;
-			elem["option"].push_back(opt);
-		}
-		elem["inputs"] = node.inputSocketIds;
-		elem["outputs"] = node.outputSocketIds;
-		g.inputSockets(
-			id, [&](const Socket&, const NodeId& dest, const NodeId& src) {
-				elem["edges"].push_back({{"src", src}, {"dest", dest}});
-			});
-		obj["nodes"].push_back(elem);
-	});
+	g.iterateNodes(
+		[&](const FilterNode& node, const NodeId& id) {
+			nlohmann::json elem;
+			elem["id"] = id;
+			elem["name"] = node.name;
+			const auto& options = node.base().options;
+			for (const auto& [optIdx, optValue] : node.option) {
+				nlohmann::json opt;
+				opt["key"] = options[optIdx].name;
+				opt["value"] = optValue;
+				elem["option"].push_back(opt);
+			}
+			elem["inputs"] = node.inputSocketIds;
+			elem["outputs"] = node.outputSocketIds;
+			g.inputSockets(
+				id, [&](const Socket&, const NodeId& dest, const NodeId& src) {
+					elem["edges"].push_back({{"src", src}, {"dest", dest}});
+				});
+			obj["nodes"].push_back(elem);
+		},
+		NodeIterOrder::Topological);
 	std::ofstream o(path, std::ios_base::binary);
+	g.resetChanged();
 	o << std::setw(4) << obj;
 	return true;
 }
@@ -466,6 +472,20 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			[&](const Filter& filter) { return filter.name == name; });
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;
+
+		if (elem.contains("option")) {
+			for (const auto& opt : elem["option"]) {
+				auto name = opt["key"].template get<std::string>();
+				auto value = opt["value"].template get<std::string>();
+				const auto& optionBase = std::find_if(
+					base->options.begin(), base->options.end(),
+					[&](const Option& option) { return option.name == name; });
+
+				auto optId = std::distance(base->options.begin(), optionBase);
+				g.getNode(nId).option[optId] = value;
+				g.optHook(nId, optId, value);
+			}
+		}
 
 		{
 			const auto& sockets = g.getNode(nId).inputSocketIds;

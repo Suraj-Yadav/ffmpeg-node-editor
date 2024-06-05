@@ -1,4 +1,3 @@
-#include <fmt/core.h>
 #include <imgui.h>
 #include <imnodes.h>
 
@@ -148,6 +147,7 @@ namespace backward {
 }
 
 int main() {
+	spdlog::set_level(spdlog::level::trace);
 	Application app;
 	app.main();
 	return 0;

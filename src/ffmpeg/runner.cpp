@@ -9,7 +9,6 @@
 
 #include <reproc/reproc.h>
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -115,20 +114,11 @@ std::pair<int, std::string> Runner::play(
 	if (inputs.empty()) {
 		args.insert(args.end(), {"-f", "lavfi", "-i", "nullsrc"});
 	} else {
-		for (const auto& i : inputs) {
-			auto itr = std::find_if(i.begin(), i.end(), [](auto c) {
-				return std::isspace(static_cast<unsigned char>(c));
-			});
-			if (itr != i.end()) {
-				args.insert(args.end(), {"-i", '"' + i + '"'});
-			} else {
-				args.insert(args.end(), {"-i", i});
-			}
-		}
+		for (const auto& i : inputs) { args.insert(args.end(), {"-i", i}); }
 	}
 	if (!filter.empty()) {
-		args.push_back("-filter_complex");
-		args.push_back(filter.data());
+		args.emplace_back("-filter_complex");
+		args.emplace_back(filter.data());
 	}
 
 	for (const auto& o : outputs) { args.insert(args.end(), {"-map", o}); }
@@ -144,7 +134,8 @@ std::pair<int, std::string> Runner::play(
 
 	// 1. Start the ffmpeg process
 	reproc::process ffmpeg;
-	SPDLOG_DEBUG("ffmpeg args: {}", args);
+	SPDLOG_DEBUG("ffmpeg args: \"{}\"", fmt::join(args, " "));
+
 	int ffmpeg_status = 0;
 	auto ffmpeg_err = ffmpeg.start(args, options);
 	if (ffmpeg_err) { return {ffmpeg_err.value(), ffmpeg_err.message()}; }
@@ -182,14 +173,13 @@ std::pair<int, std::string> Runner::play(
 	}
 
 	SPDLOG_DEBUG("player args: {}", player_args);
-	reproc::run(player_args);
+	auto player_response = reproc::run(player_args);
 
 	reproc::stop_actions stop{
 		{reproc::stop::noop, 0ms},
 		{reproc::stop::terminate, 500ms},
 		{reproc::stop::kill, 200ms}};
-
 	ffmpeg.stop(stop);
-	// After player exit it doesn't matter how ffmpeg exited
-	return {0, ""};
+
+	return {player_response.second.value(), player_response.second.message()};
 }

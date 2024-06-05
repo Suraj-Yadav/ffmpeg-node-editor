@@ -432,7 +432,7 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 					if (parentSocketId == INVALID_NODE) {
 						err.code = FilterGraphErrorCode::PLAYER_MISSING_INPUT;
 						err.message = fmt::format(
-							"Socket \"{}\" of node \"{}\" needs an input",
+							R"(Socket "{}" of node "{}" needs an input)",
 							s.name, node.name);
 						return;
 					}
@@ -459,7 +459,7 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 					}
 					first = false;
 
-					const auto* const VALUE_FORMAT = "{}=\"{}\"";
+					const auto* const VALUE_FORMAT = "{}={}";
 
 #ifdef _WIN32
 					// Hack for fontconfig in windows

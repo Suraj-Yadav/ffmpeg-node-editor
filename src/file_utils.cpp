@@ -28,20 +28,20 @@ std::optional<std::filesystem::path> saveFile(std::string_view fileType) {
 
 void showErrorMessage(std::string const& title, std::string const& text) {
 	std::string title_copy = title, text_copy = text;
-	std::replace(title_copy.begin(), title_copy.end(), '\'', '`');
-	std::replace(title_copy.begin(), title_copy.end(), '"', '`');
-	std::replace(text_copy.begin(), text_copy.end(), '\'', '`');
-	std::replace(text_copy.begin(), text_copy.end(), '"', '`');
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '|');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '|');
 	tinyfd_messageBox(title_copy.c_str(), text_copy.c_str(), "ok", "error", 0);
 }
 
 int showActionDialog(
 	std::string const& title, std::string const& text, std::string_view type) {
 	std::string title_copy = title, text_copy = text;
-	std::replace(title_copy.begin(), title_copy.end(), '\'', '`');
-	std::replace(title_copy.begin(), title_copy.end(), '"', '`');
-	std::replace(text_copy.begin(), text_copy.end(), '\'', '`');
-	std::replace(text_copy.begin(), text_copy.end(), '"', '`');
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '|');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '|');
 	return tinyfd_messageBox(
 		title_copy.c_str(), text_copy.c_str(), "yesnocancel", "question", 0);
 }
