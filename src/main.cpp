@@ -76,7 +76,7 @@ class Application {
 				return;
 
 			case MenuActionPreference:
-				pref.show = !pref.show;
+				pref.isOpen = !pref.isOpen;
 				return;
 
 			case MenuActionNone: {
@@ -126,19 +126,26 @@ class Application {
 
 			focusedEditor = -1;
 			for (auto i = 0; i < editors.size(); ++i) {
-				auto [focused, open] = editors[i].draw(pref);
+				auto focused = false;
+				editors[i].draw(pref, focused);
 				if (focused) { focusedEditor = i; }
-				if (!open) {
+				if (editors[i].isClosed()) {
 					std::swap(editors[i], editors.back());
 					editors.pop_back();
 				}
 			}
 
-			if (pref.draw()) { pref.setOptions(); }
+			pref.draw();
 
 			constexpr ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 			Window::Render(clear_color);
 		}
+
+		while (!editors.empty()) {
+			editors.back().close();
+			editors.pop_back();
+		}
+		pref.close();
 	}
 };
 

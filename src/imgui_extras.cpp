@@ -1,11 +1,14 @@
 #include "imgui_extras.hpp"
 
+#include <IconsFontAwesome6.h>
 #include <fmt/core.h>
 #include <imgui.h>
 
 #include <array>
 
+#include "file_utils.hpp"
 #include "string_utils.hpp"
+#include "util.hpp"
 
 struct colorKey {
 	std::string_view name;
@@ -163,10 +166,6 @@ constexpr std::array<colorKey, 148> COLORS = {{
 	{"yellowgreen", 0x9acd32},
 }};
 
-bool compare_colorKey(const colorKey& a, const std::string_view& b) {
-	return a.name < b;
-}
-
 namespace ImGui {
 	ImU32 ColorConvertHexToU32(std::string_view hex) {
 		constexpr auto MAX_VALUE = 0xFF;
@@ -188,7 +187,7 @@ namespace ImGui {
 		if (str::stoi(hex, val, 16)) {
 		} else if (auto itr = std::lower_bound(
 					   COLORS.begin(), COLORS.end(), str::tolower(hex),
-					   compare_colorKey);
+					   [](const auto& a, const auto& b) { return a.name < b; });
 				   itr != COLORS.end() && str::equals(itr->name, hex, true)) {
 			val = itr->hex & 0x00FFFFFF;
 		} else {
@@ -214,4 +213,89 @@ namespace ImGui {
 				   a = (val >> IM_COL32_A_SHIFT) & 0xFF;
 		return fmt::format("#{:02X}{:02X}{:02X}{:02X}", r, g, b, a);
 	}
+
+	bool InputFont(const char* label, std::string& str, float width) {
+#ifdef _WIN32
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (FontButton(ICON_FA_FONT)) {
+			auto path = selectFont();
+			if (path.has_value()) {
+				str = path.value().string();
+				return true;
+			}
+		}
+		return false;
+#else
+		return InputText(label, &str);
+#endif
+	}
+
+	bool InputFile(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (FontButton(ICON_FA_FOLDER_OPEN)) {
+			auto path = openFile();
+			if (path.has_value()) {
+				str = path->string();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool InputColor(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		auto color = ColorConvertHexToFloat4(str);
+		if (ColorEdit4(
+				"##col", &color.x,
+				ImGuiColorEditFlags_AlphaPreviewHalf |
+					ImGuiColorEditFlags_AlphaBar |
+					ImGuiColorEditFlags_NoOptions)) {
+			str = ColorConvertFloat4ToHex(color);
+			return true;
+		}
+		return false;
+	}
+
+	bool InputCheckbox(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		const int TRUE = 1, FALSE = 0, MAYBE = 2;
+		int v = FALSE;
+		if (str == "1") {
+			v = TRUE | MAYBE;
+		} else if (str != "0") {
+			v = MAYBE;
+		}
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (CheckboxFlags("##b", &v, TRUE | MAYBE)) {
+			if (v == FALSE) {
+				str = "0";
+			} else {
+				str = "1";
+			}
+			return true;
+		}
+		return false;
+	}
+	UnsavedDocumentAction UnsavedDocumentClose(
+		bool unsaved, bool open, std::string const& title,
+		std::string const& text) {
+		if (open || !unsaved) { return UnsavedDocumentAction::NO_OP; }
+		auto result = showActionDialog(title, text);
+		if (result == 0) { return UnsavedDocumentAction::CANCEL_CLOSE; }
+		if (result == 1) { return UnsavedDocumentAction::SAVE_CHANGES; }
+		if (result == 2) { return UnsavedDocumentAction::DISCARD_CHANGES; }
+		return UnsavedDocumentAction::NO_OP;
+	}
+
 };	// namespace ImGui

@@ -64,7 +64,7 @@ int Runner::lineScanner(
 		return reproc::run(args, options).first;
 	}
 
-	SPDLOG_INFO("args: {}", args);
+	SPDLOG_DEBUG("args: {}", args);
 
 	auto readLambda = [&](auto stream, auto bytes, auto n) {
 		if (readStdErr && stream != reproc::stream::err) {
@@ -163,7 +163,7 @@ std::pair<int, std::string> Runner::play(
 
 	auto tempString = tempPath.string();
 
-	std::vector<std::string_view> player_args;
+	std::vector<std::string_view> player_args{"cmd", "/C", "start"};
 	for (auto& elem : str::split(player, '\n')) {
 		if (elem == "%f") {
 			player_args.emplace_back(tempString);

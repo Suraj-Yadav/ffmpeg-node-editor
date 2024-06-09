@@ -22,10 +22,6 @@ target_sources(
           ${imgui_stack_SOURCE_DIR}/imgui_draw.cpp
           ${imgui_stack_SOURCE_DIR}/imgui_tables.cpp
           ${imgui_stack_SOURCE_DIR}/imgui_widgets.cpp
-          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
-          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-          ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_win32.cpp
           ${imgui_stack_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
           ${imnodes_SOURCE_DIR}/imnodes.cpp)
 
@@ -34,8 +30,21 @@ target_include_directories(
   PUBLIC ${imgui_stack_SOURCE_DIR} ${imgui_stack_SOURCE_DIR}/backends
          ${imgui_stack_SOURCE_DIR}/misc/cpp ${imnodes_SOURCE_DIR})
 
-find_package(glfw3 REQUIRED)
-target_link_libraries(imgui PRIVATE glfw)
+if(MSVC AND FALSE)
+  target_link_libraries(imgui PRIVATE d3d12.lib d3dcompiler.lib dxgi.lib)
+  target_compile_definitions(imgui PUBLIC IMGUI_USE_WIN32_D3D12)
+  target_sources(
+    imgui PRIVATE ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
+                  ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_win32.cpp)
+else()
+  find_package(OpenGL REQUIRED)
+  find_package(glfw3 REQUIRED)
+  target_link_libraries(imgui PRIVATE glfw ${OPENGL_gl_LIBRARY})
+  target_compile_definitions(imgui PUBLIC IMGUI_USE_GLFW_OPENGL)
+  target_sources(
+    imgui PRIVATE ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+                  ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
+endif()
 
 # Icons
 FetchContent_Declare(

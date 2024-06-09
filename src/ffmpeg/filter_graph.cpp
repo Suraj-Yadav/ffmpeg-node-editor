@@ -497,8 +497,9 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 					fmt::format("[s{}]", socketId.val);
 				outputSocketNames[socketId.val] =
 					fmt::format("[s{}]", socketId.val);
-				fmt::format_to(
-					std::back_inserter(buff), inputSocketNames[socketId.val]);
+				buff += inputSocketNames[socketId.val];
+				// fmt::format_to(
+				// std::back_inserter(buff), inputSocketNames[socketId.val]);
 			});
 			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
 		},

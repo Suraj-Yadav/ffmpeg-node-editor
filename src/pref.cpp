@@ -13,6 +13,7 @@
 
 #include "imgui_extras.hpp"
 #include "string_utils.hpp"
+#include "util.hpp"
 
 Style::Style() : colorPicker(0) {
 	using namespace ImGui;
@@ -136,11 +137,12 @@ bool Preference::save() {
 	return true;
 }
 
-bool Preference::draw() {
-	if (!show) { return false; }
+void Preference::draw() {
+	if (!isOpen) { return; }
 	using namespace ImGui;
 	bool changed = false;
-	if (ImGui::Begin("Edit Preference", &show, UnsavedDocumentFlag(unsaved))) {
+	if (ImGui::Begin(
+			"Edit Preference", &isOpen, UnsavedDocumentFlag(unsaved))) {
 		BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
@@ -219,7 +221,7 @@ bool Preference::draw() {
 			Spring();
 			if (Button("Reset")) {
 				*this = {};
-				show = true;
+				isOpen = true;
 				changed = true;
 			}
 			Spring(0.5);
@@ -233,14 +235,23 @@ bool Preference::draw() {
 	ImGui::End();
 	unsaved = unsaved || changed;
 
+	if (!isOpen) { close(); }
+
+	if (changed) { setOptions(); }
+}
+
+void Preference::close() {
+	using namespace ImGui;
+	isOpen = false;
+
 	switch (UnsavedDocumentClose(
-		unsaved, show, "Unsaved Preference Changes",
+		unsaved, isOpen, "Unsaved Preference Changes",
 		"Do you want to save current preferences?")) {
 		case UnsavedDocumentAction::SAVE_CHANGES:
 			save();
 			break;
 		case UnsavedDocumentAction::CANCEL_CLOSE:
-			show = true;
+			isOpen = true;
 			break;
 		case UnsavedDocumentAction::DISCARD_CHANGES:
 			load();
@@ -248,7 +259,6 @@ bool Preference::draw() {
 		case UnsavedDocumentAction::NO_OP:
 			break;
 	}
-	return changed;
 }
 
 void Preference::setOptions() const {

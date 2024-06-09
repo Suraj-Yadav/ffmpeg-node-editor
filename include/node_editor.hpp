@@ -39,12 +39,19 @@ class NodeEditor {
 	std::string name;
 	std::filesystem::path path;
 
+	bool isOpen = true;
+
    public:
 	NodeEditor(const Profile& p, std::string n);
 	[[nodiscard]] std::string getName() const;
 	[[nodiscard]] const std::filesystem::path& getPath() const { return path; };
-	[[nodiscard]] bool save();
 	void setPath(std::filesystem::path& p) { path = p; };
-	std::pair<bool, bool> draw(const Preference& pref);
+	void draw(const Preference& pref, bool& focused);
+
+	[[nodiscard]] bool isClosed() const { return !isOpen; }
+	void close();
+
+	[[nodiscard]] bool hasChanges() const { return g.changed(); }
+	bool save();
 	bool load(const std::filesystem::path& path);
 };

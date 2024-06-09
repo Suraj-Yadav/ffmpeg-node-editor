@@ -30,6 +30,8 @@ auto InputTextWithCompletion(
 	using namespace ImGui;
 	constexpr auto POPUP_OPTION_COMPLETION = "Completion";
 
+	auto changed = false;
+
 	const bool isInputTextEnterPressed =
 		InputText(label, &value, ImGuiInputTextFlags_EnterReturnsTrue);
 	const bool isInputTextActive = IsItemActive();
@@ -55,12 +57,12 @@ auto InputTextWithCompletion(
 		if (isInputTextEnterPressed ||
 			(!isInputTextActive && !IsWindowFocused())) {
 			ImGui::CloseCurrentPopup();
-			return true;
+			changed = true;
 		}
 
 		EndPopup();
 	}
-	return false;
+	return changed;
 }
 
 bool drawOption(
@@ -372,12 +374,10 @@ void NodeEditor::handleEdits(const Preference& pref) {
 	handleLinks(g);
 }
 
-std::pair<bool, bool> NodeEditor::draw(const Preference& pref) {
+void NodeEditor::draw(const Preference& pref, bool& focused) {
 	constexpr auto minimapFraction = 0.2f;
-	auto focused = false;
-	auto open = true;
 	if (ImGui::Begin(
-			getName().c_str(), &open,
+			getName().c_str(), &isOpen,
 			ImGui::UnsavedDocumentFlag(g.changed()))) {
 		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 		ImNodes::EditorContextSet(context.get());
@@ -399,21 +399,28 @@ std::pair<bool, bool> NodeEditor::draw(const Preference& pref) {
 		ImNodes::EditorContextSet(nullptr);
 	}
 	ImGui::End();
-	switch (ImGui::UnsavedDocumentClose(
-		g.changed(), open, "Unsaved Graph",
+
+	if (isClosed()) { close(); }
+}
+
+void NodeEditor::close() {
+	using namespace ImGui;
+	isOpen = false;
+
+	switch (UnsavedDocumentClose(
+		g.changed(), isOpen, "Unsaved Graph",
 		"Do you want to save the current graph?")) {
-		case ImGui::UnsavedDocumentAction::SAVE_CHANGES:
+		case UnsavedDocumentAction::SAVE_CHANGES:
 			(void)save();
 			break;
-		case ImGui::UnsavedDocumentAction::DISCARD_CHANGES:
+		case UnsavedDocumentAction::DISCARD_CHANGES:
 			break;
-		case ImGui::UnsavedDocumentAction::CANCEL_CLOSE:
-			open = true;
+		case UnsavedDocumentAction::CANCEL_CLOSE:
+			isOpen = true;
 			break;
-		case ImGui::UnsavedDocumentAction::NO_OP:
+		case UnsavedDocumentAction::NO_OP:
 			break;
 	}
-	return {focused, open};
 }
 
 namespace nlohmann {

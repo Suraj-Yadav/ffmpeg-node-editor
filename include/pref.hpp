@@ -35,13 +35,18 @@ struct Preference {
 	std::filesystem::path font;
 	int fontSize;
 	std::string player;
-	bool show = false;
 	bool unsaved = false;
+
+	bool isOpen = false;
 
 	Preference();
 
 	void setOptions() const;
+	void draw();
+
+	void close();
+
+	[[nodiscard]] bool hasChanges() const { return unsaved; }
 	bool load();
 	bool save();
-	bool draw();
 };

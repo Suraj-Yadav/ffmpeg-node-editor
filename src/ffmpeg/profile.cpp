@@ -332,7 +332,7 @@ Profile GetProfile() {
 
 		nlohmann::json json = profile.filters;
 		std::ofstream o(path.appDir / "filters.json", std::ios_base::binary);
-		o << std::setw(4) << json;
+		o << json.dump(1, '\t');
 	}
 
 	profile.filters.push_back(

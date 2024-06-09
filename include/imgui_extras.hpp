@@ -5,10 +5,6 @@
 
 #include <string>
 
-#include "IconsFontAwesome6.h"
-#include "file_utils.hpp"
-#include "util.hpp"
-
 namespace ImGui {
 
 	inline ImVec2 GetItemRectPoint(float wx = 0, float wy = 0) {
@@ -41,83 +37,13 @@ namespace ImGui {
 		return ColorConvertU32ToFloat4(ColorConvertHexToU32(hex));
 	}
 
-	inline bool InputFont(
-		const char* label, std::string& str, float width = -1) {
-#ifdef _WIN32
-		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
-		defer w([&]() { PopItemWidth(); });
-		if (InputText(label, &str)) { return true; }
-		Spring(0, 0);
-		if (FontButton(ICON_FA_FONT)) {
-			auto path = selectFont();
-			if (path.has_value()) {
-				str = path.value().string();
-				return true;
-			}
-		}
-		return false;
-#else
-		return InputText(label, &str);
-#endif
-	}
+	bool InputFont(const char* label, std::string& str, float width = -1);
 
-	inline bool InputFile(
-		const char* label, std::string& str, float width = -1) {
-		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
-		defer w([&]() { PopItemWidth(); });
-		if (InputText(label, &str)) { return true; }
-		Spring(0, 0);
-		if (FontButton(ICON_FA_FOLDER_OPEN)) {
-			auto path = openFile();
-			if (path.has_value()) {
-				str = path->string();
-				return true;
-			}
-		}
-		return false;
-	}
+	bool InputFile(const char* label, std::string& str, float width = -1);
 
-	inline bool InputColor(
-		const char* label, std::string& str, float width = -1) {
-		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
-		defer w([&]() { PopItemWidth(); });
-		if (InputText(label, &str)) { return true; }
-		Spring(0, 0);
-		auto color = ColorConvertHexToFloat4(str);
-		if (ColorEdit4(
-				"##col", &color.x,
-				ImGuiColorEditFlags_AlphaPreviewHalf |
-					ImGuiColorEditFlags_AlphaBar |
-					ImGuiColorEditFlags_NoOptions)) {
-			str = ColorConvertFloat4ToHex(color);
-			return true;
-		}
-		return false;
-	}
+	bool InputColor(const char* label, std::string& str, float width = -1);
 
-	inline bool InputCheckbox(
-		const char* label, std::string& str, float width = -1) {
-		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
-		defer w([&]() { PopItemWidth(); });
-		const int TRUE = 1, FALSE = 0, MAYBE = 2;
-		int v = FALSE;
-		if (str == "1") {
-			v = TRUE | MAYBE;
-		} else if (str != "0") {
-			v = MAYBE;
-		}
-		if (InputText(label, &str)) { return true; }
-		Spring(0, 0);
-		if (CheckboxFlags("##b", &v, TRUE | MAYBE)) {
-			if (v == FALSE) {
-				str = "0";
-			} else {
-				str = "1";
-			}
-			return true;
-		}
-		return false;
-	}
+	bool InputCheckbox(const char* label, std::string& str, float width = -1);
 
 	inline int UnsavedDocumentFlag(
 		bool unsaved, int flag = ImGuiWindowFlags_None) {
@@ -132,14 +58,8 @@ namespace ImGui {
 		DISCARD_CHANGES
 	};
 
-	inline UnsavedDocumentAction UnsavedDocumentClose(
+	UnsavedDocumentAction UnsavedDocumentClose(
 		bool unsaved, bool open, std::string const& title,
-		std::string const& text) {
-		if (open || !unsaved) { return UnsavedDocumentAction::NO_OP; }
-		auto result = showActionDialog(title, text);
-		if (result == 0) { return UnsavedDocumentAction::CANCEL_CLOSE; }
-		if (result == 1) { return UnsavedDocumentAction::SAVE_CHANGES; }
-		if (result == 2) { return UnsavedDocumentAction::DISCARD_CHANGES; }
-		return UnsavedDocumentAction::NO_OP;
-	}
+		std::string const& text);
+
 }  // namespace ImGui

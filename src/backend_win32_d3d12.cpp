@@ -1,4 +1,4 @@
-#ifdef FFMPEG_NODE_EDITOR_USE_WIN32_D3D12
+#ifdef IMGUI_USE_WIN32_D3D12
 #include <array>
 
 #include "backend.hpp"
@@ -79,7 +79,7 @@ namespace Window {
 	// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 	bool InitWindow(ImGuiConfigFlags flags, const Preference& pref) {
-		ImGui_ImplWin32_EnableDpiAwareness();
+		// ImGui_ImplWin32_EnableDpiAwareness();
 		wc = {
 			sizeof(wc),
 			CS_OWNDC,
@@ -496,11 +496,6 @@ namespace Window {
 					CreateRenderTarget();
 				}
 				return 0;
-			case WM_SYSCOMMAND:
-				if ((wParam & 0xfff0) ==
-					SC_KEYMENU)	 // Disable ALT application menu
-					return 0;
-				break;
 			case WM_DESTROY:
 				::PostQuitMessage(0);
 				return 0;
