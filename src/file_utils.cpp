@@ -9,6 +9,8 @@
 #include <string_utils.hpp>
 #include <string_view>
 
+#include "util.hpp"
+
 std::optional<std::filesystem::path> openFile() {
 	auto* selection =
 		tinyfd_openFileDialog("Open File", nullptr, 0, nullptr, nullptr, 0);
