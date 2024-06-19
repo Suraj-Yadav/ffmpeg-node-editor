@@ -163,7 +163,11 @@ std::pair<int, std::string> Runner::play(
 
 	auto tempString = tempPath.string();
 
+#if defined(APP_OS_WINDOWS)
 	std::vector<std::string_view> player_args{"cmd", "/C", "start"};
+#else
+	std::vector<std::string_view> player_args{};
+#endif
 	for (auto& elem : str::split(player, '\n')) {
 		if (elem == "%f") {
 			player_args.emplace_back(tempString);

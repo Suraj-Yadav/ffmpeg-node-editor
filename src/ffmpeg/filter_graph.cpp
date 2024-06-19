@@ -411,6 +411,38 @@ FilterNode& FilterGraph::getNode(NodeId id) {
 	return nodes[state.vertIdToNodeIndex[getU(id)]];
 }
 
+void addNodeToFilterGraph(
+	std::string& buff, const FilterNode& node, const NodeId& id) {
+	fmt::format_to(
+		std::back_inserter(buff), "{}@{}{}=", node.name, node.name, id.val);
+
+	const auto& options = node.base().options;
+	for (const auto& [id, value] : node.option) {
+		buff += options[id].name;
+		buff += "=";
+
+// Processing needed for font path in windows
+#if defined(APP_OS_WINDOWS)
+		if (str::ends_with(options[id].name, "fontfile")) {
+			for (const auto& ch : value) {
+				if (ch == '\\') {
+					buff.push_back('/');
+				} else if (ch == ':') {
+					buff += "\\\\:";
+				} else {
+					buff.push_back(ch);
+				}
+			}
+		} else
+#endif
+		{
+			buff += value;
+		}
+		buff += ':';
+	}
+	buff.pop_back();
+}
+
 FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 	FilterGraphError err{FilterGraphErrorCode::PLAYER_NO_ERROR};
 
@@ -445,49 +477,12 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 			if (isInput) {
 				inputs.push_back(node.option.at(0));
 			} else {
-				fmt::format_to(
-					std::back_inserter(buff), "{}@{}{}", node.name, node.name,
-					id.val);
-
-				const auto& options = node.base().options;
-				bool first = true;
-				for (const auto& [optId, optValue] : node.option) {
-					if (first) {
-						buff.push_back('=');
-					} else {
-						buff.push_back(':');
-					}
-					first = false;
-
-					const auto* const VALUE_FORMAT = "{}={}";
-
-#ifdef _WIN32
-					// Hack for fontconfig in windows
-					if (str::ends_with(options[optId].name, "fontfile")) {
-						auto v = optValue;
-						std::replace(v.begin(), v.end(), '\\', '/');
-						v.insert(v.find(':'), "\\\\");
-						fmt::format_to(
-							std::back_inserter(buff), VALUE_FORMAT,
-							options[optId].name.data(), v);
-					} else {
-						fmt::format_to(
-							std::back_inserter(buff), VALUE_FORMAT,
-							options[optId].name.data(), optValue);
-					}
-#else
-					fmt::format_to(
-						std::back_inserter(buff), VALUE_FORMAT,
-						options[optId].name.data(), optValue);
-#endif
-				}
+				addNodeToFilterGraph(buff, node, id);
 			}
 
 			auto socketIdx = 0;
 			outputSockets(id, [&](const Socket&, const NodeId& socketId) {
 				if (isInput) {
-					// outputSocketNames[socketId.val] =
-					// 	fmt::format("{}:{}", idx, socketIdx);
 					inputSocketNames[socketId.val] =
 						fmt::format("[{}:{}]", idx, socketIdx);
 					socketIdx++;
@@ -498,8 +493,6 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 				outputSocketNames[socketId.val] =
 					fmt::format("[s{}]", socketId.val);
 				buff += inputSocketNames[socketId.val];
-				// fmt::format_to(
-				// std::back_inserter(buff), inputSocketNames[socketId.val]);
 			});
 			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
 		},
@@ -511,8 +504,9 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 		out.push_back(fmt::format("{}", e.second));
 	}
 	int status = 0;
-	// this is needed
 	auto filterString = fmt::to_string(buff);
+
+	// this is needed for some versions of ffmpeg
 	if (!filterString.empty() && filterString.back() == ';') {
 		filterString.pop_back();
 	}

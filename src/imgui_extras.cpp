@@ -215,7 +215,7 @@ namespace ImGui {
 	}
 
 	bool InputFont(const char* label, std::string& str, float width) {
-#ifdef _WIN32
+#if defined(APP_OS_WINDOWS)
 		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
 		defer w([&]() { PopItemWidth(); });
 		if (InputText(label, &str)) { return true; }

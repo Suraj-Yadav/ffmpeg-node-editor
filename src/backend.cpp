@@ -1,12 +1,11 @@
 #include "backend.hpp"
 
+#include <IconsFontAwesome6.h>
+#include <IconsFontAwesome6.h_fa-solid-900.ttf.h>
 #include <imgui.h>
 
 #include <array>
-
-//
-#include <IconsFontAwesome6.h>
-#include <IconsFontAwesome6.h_fa-solid-900.ttf.h>
+#include <vector>
 
 constexpr std::array<ImWchar, 3> icons_ranges{ICON_MIN_FA, ICON_MAX_16_FA, 0};
 

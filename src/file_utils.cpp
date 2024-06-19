@@ -46,7 +46,7 @@ int showActionDialog(
 		title_copy.c_str(), text_copy.c_str(), "yesnocancel", "question", 0);
 }
 
-#ifdef _WIN32
+#if defined(APP_OS_WINDOWS)
 #include <Windows.h>
 #include <wingdi.h>
 #include <winnt.h>

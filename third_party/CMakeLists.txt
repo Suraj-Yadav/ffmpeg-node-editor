@@ -37,9 +37,12 @@ if(MSVC AND FALSE)
     imgui PRIVATE ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
                   ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_win32.cpp)
 else()
+  set(OpenGL_GL_PREFERENCE
+      GLVND
+      CACHE INTERNAL "")
   find_package(OpenGL REQUIRED)
   find_package(glfw3 REQUIRED)
-  target_link_libraries(imgui PRIVATE glfw ${OPENGL_gl_LIBRARY})
+  target_link_libraries(imgui PRIVATE glfw OpenGL::GL)
   target_compile_definitions(imgui PUBLIC IMGUI_USE_GLFW_OPENGL)
   target_sources(
     imgui PRIVATE ${imgui_stack_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
@@ -56,7 +59,7 @@ FetchContent_Declare(
 FetchContent_Populate(icon_fonts)
 
 execute_process(
-  COMMAND python3 "${icon_fonts_SOURCE_DIR}/GenerateIconFontCppHeaders.py"
+  COMMAND python "${icon_fonts_SOURCE_DIR}/GenerateIconFontCppHeaders.py"
   WORKING_DIRECTORY "${icon_fonts_SOURCE_DIR}")
 
 add_library(IconFontCppHeaders INTERFACE)

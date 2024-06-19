@@ -32,28 +32,23 @@ Style::Style() : colorPicker(0) {
 
 Preference::Preference()
 	:
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#if defined(APP_OS_WINDOWS)
 	  font(R"(C:\Windows\Fonts\segoeui.ttf)"),
-#else
-	  font(),
-#endif
 	  fontSize(24),
+#endif
 	  player("vlc\n%f") {
 }
 
 Paths::Paths() {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#if defined(APP_OS_WINDOWS)
 	char* p = nullptr;
 	size_t len = 0;
 	if (_dupenv_s(&p, &len, "APPDATA") == 0) { appDir = p; }
-#elif __linux__ || __unix__ || defined(_POSIX_VERSION)
+#elif defined(APP_OS_LINUX)
 	auto* p = std::getenv("HOME");
 	if (p != nullptr) {
 		appDir = std::filesystem::path(p) / ".local" / "share";
 	}
-// #elif __APPLE__
-#else
-#error "Unknown Platform"
 #endif
 	if (appDir.empty()) {
 		SPDLOG_ERROR("Unable to find appdata folder");

@@ -3,7 +3,12 @@
     "name": "ffmpeg-node-editor",
     "dependencies": [
         "backward-cpp",
-        "glfw3",
+        {
+            "name": "glfw3",
+            "features": [
+                "wayland"
+            ]
+        },
         "gtest",
         "nlohmann-json",
         "reproc",

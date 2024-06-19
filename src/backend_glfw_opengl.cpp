@@ -30,7 +30,7 @@ namespace Window {
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		float highDPIscaleFactor = 1.0;
-#ifdef _WIN32
+#if defined(APP_OS_WINDOWS)
 		glfwWindowHint(GLFW_WIN32_KEYBOARD_MENU, GLFW_TRUE);
 		// if it's a HighDPI monitor, try to scale everything
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -40,7 +40,7 @@ namespace Window {
 			highDPIscaleFactor = xScale;
 			glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 		}
-#elif __APPLE__
+#elif defined(APP_OS_APPLE)
 		// to prevent 1200x800 from becoming 2400x1600
 		glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #endif
