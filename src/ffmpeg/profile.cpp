@@ -16,9 +16,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	SocketType, {
 					{SocketType::Video, "video"},
 					{SocketType::Audio, "audio"},
+					{SocketType::Subtitle, "subtitle"},
 				});
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Socket, name, type);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Socket, index, name, type);
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AllowedValues, value, desc);
 
@@ -271,9 +272,9 @@ class FilterParser {
 
 		filter.name = std::string(name);
 
-		runner.lineScanner({"--help", "filter=" + filter.name}, [this](auto x) {
-			return processLine(x);
-		});
+		(void)runner.lineScanner(
+			{"--help", "filter=" + filter.name},
+			[this](auto x) { return processLine(x); });
 
 		return filter;
 	}

@@ -105,28 +105,21 @@ namespace {
 		state.valid[u] = false;
 		state.changed = true;
 	}
-	std::vector<Socket> getMediaInfo(const Runner& r, const std::string& path) {
+	std::vector<Socket> getSockets(const Runner& r, const std::string& path) {
+		auto info = r.getInfo(path);
 		std::vector<Socket> sockets;
-		bool inputStarted = false;
-		r.lineScanner(
-			{"-i", path},
-			[&](std::string_view line) {
-				if (!inputStarted) {
-					inputStarted = str::starts_with(line, "Input #0");
-					return true;
-				}
-				if (str::starts_with(line, "  Stream #0")) {
-					if (str::contains(line, "Video:")) {
-						sockets.push_back({"", SocketType::Video});
-					} else if (str::contains(line, "Audio:")) {
-						sockets.push_back({"", SocketType::Audio});
-					} else if (str::contains(line, "Subtitle:")) {
-						sockets.push_back({"", SocketType::Subtitle});
-					}
-				}
-				return true;
-			},
-			true);
+		for (auto& stream : info.streams) {
+			if (stream.type == "video") {
+				sockets.push_back(
+					{stream.index, stream.name, SocketType::Video});
+			} else if (stream.type == "audio") {
+				sockets.push_back(
+					{stream.index, stream.name, SocketType::Audio});
+			} else if (stream.type == "subtitle") {
+				sockets.push_back(
+					{stream.index, stream.name, SocketType::Subtitle});
+			}
+		}
 		return sockets;
 	}
 
@@ -178,15 +171,15 @@ namespace {
 	}
 
 	std::vector<Socket> getNewSockets(unsigned int count, SocketType type) {
-		return std::vector<Socket>(count, {"", type});
+		return std::vector<Socket>(count, {0, "", type});
 	}
 
 	std::vector<Socket> getNewSockets(
 		long long count, std::string_view filterName) {
 		if (str::starts_with(filterName, "a", true)) {
-			return std::vector<Socket>(count, {"", SocketType::Audio});
+			return std::vector<Socket>(count, {0, "", SocketType::Audio});
 		}
-		return std::vector<Socket>(count, {"", SocketType::Video});
+		return std::vector<Socket>(count, {0, "", SocketType::Video});
 	}
 	int getOptIndex(const Filter& base, std::string_view name) {
 		for (int i = 0; i < base.options.size(); ++i) {
@@ -251,7 +244,7 @@ void FilterGraph::optHook(
 		(base.name == INPUT_FILTER_NAME || base.name == "movie" ||
 		 base.name == "amovie") &&
 		option.name == "filename") {
-		newOutputs = getMediaInfo(profile->runner, value);
+		newOutputs = getSockets(profile->runner, value);
 	} else if (base.name == "acrossover" && option.name == "split") {
 		auto count = 1U;
 		char last = '\0';
@@ -278,7 +271,7 @@ void FilterGraph::optHook(
 		if (contains(node.option, vi)) { v = std::stoi(node.option[vi]); }
 		if (contains(node.option, ai)) { a = std::stoi(node.option[ai]); }
 		newOutputs = getNewSockets(v, SocketType::Video);
-		newOutputs->insert(newOutputs->end(), a, {"", SocketType::Audio});
+		newOutputs->insert(newOutputs->end(), a, {0, "", SocketType::Audio});
 		newInputs = getNewSockets(0, "");
 		for (int i = 0; i < n; ++i) {
 			newInputs->insert(
@@ -480,20 +473,19 @@ FilterGraphError FilterGraph::play(const Preference& pref, const NodeId& id) {
 				addNodeToFilterGraph(buff, node, id);
 			}
 
-			auto socketIdx = 0;
-			outputSockets(id, [&](const Socket&, const NodeId& socketId) {
-				if (isInput) {
+			outputSockets(
+				id, [&](const Socket& socket, const NodeId& socketId) {
+					if (isInput) {
+						inputSocketNames[socketId.val] =
+							fmt::format("[{}:{}]", idx, socket.index);
+						return;
+					}
 					inputSocketNames[socketId.val] =
-						fmt::format("[{}:{}]", idx, socketIdx);
-					socketIdx++;
-					return;
-				}
-				inputSocketNames[socketId.val] =
-					fmt::format("[s{}]", socketId.val);
-				outputSocketNames[socketId.val] =
-					fmt::format("[s{}]", socketId.val);
-				buff += inputSocketNames[socketId.val];
-			});
+						fmt::format("[s{}]", socketId.val);
+					outputSocketNames[socketId.val] =
+						fmt::format("[s{}]", socketId.val);
+					buff += inputSocketNames[socketId.val];
+				});
 			if (!isInput) { fmt::format_to(std::back_inserter(buff), ";"); }
 		},
 		NodeIterOrder::Topological, id);

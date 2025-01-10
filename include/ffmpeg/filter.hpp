@@ -6,6 +6,7 @@
 enum class SocketType { Video, Audio, Subtitle };
 
 struct Socket {
+	int index;
 	std::string name;
 	SocketType type;
 };

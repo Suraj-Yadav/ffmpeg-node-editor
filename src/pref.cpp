@@ -34,8 +34,10 @@ Preference::Preference()
 	:
 #if defined(APP_OS_WINDOWS)
 	  font(R"(C:\Windows\Fonts\segoeui.ttf)"),
-	  fontSize(24),
+#elif defined(APP_OS_LINUX)
+	  font(R"(/usr/share/fonts/abattis-cantarell-fonts/Cantarell-Regular.otf)"),
 #endif
+	  fontSize(24),
 	  player("vlc\n%f") {
 }
 

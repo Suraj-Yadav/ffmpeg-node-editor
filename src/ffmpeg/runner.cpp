@@ -3,18 +3,13 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#if __has_include(<unistd.h>)
-#include <unistd.h>
-#endif
-
-#include <reproc/reproc.h>
+#include <subprocess.h>
 
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
-#include <future>
-#include <reproc++/run.hpp>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "string_utils.hpp"
@@ -23,75 +18,105 @@
 using namespace std::chrono_literals;
 
 namespace {
-	auto reader(
-		std::string& incompleteLine, const LineScannerCallback& cb,
-		const uint8_t* bytes, size_t n) {
-		auto data = std::string_view(reinterpret_cast<const char*>(bytes), n);
-		for (auto idx = data.find_first_of('\n'); idx != std::string_view::npos;
-			 idx = data.find_first_of('\n')) {
-			auto line = data.substr(0, idx);
-			data.remove_prefix(idx + 1);
-			if (incompleteLine.size() > 0) {
-				incompleteLine.append(line.begin(), line.end());
-				line = std::string_view(incompleteLine);
-			}
-			if (!cb(line)) {
-				return std::make_error_code(reproc::error::interrupted);
-			}
-			incompleteLine.clear();
-		}
-		if (data.size() > 0) {
-			incompleteLine.append(data.begin(), data.end());
-		}
-		return std::error_code();
-	}
-
 	const int PID = getpid();
 	std::atomic_int filename_index = 0;
 
-}  // namespace
-int Runner::lineScanner(
-	std::vector<std::string> args, LineScannerCallback cb,
-	bool readStdErr) const {
-	args.insert(args.begin(), path.string());
-	std::string incompleteLine;
-
-	reproc::options options;
-	if (cb == nullptr) {
-		options.redirect.discard = true;
-		options.timeout = 1s;
-
-		return reproc::run(args, options).first;
+	auto convertArgs(const std::vector<std::string>& args) {
+		std::vector<const char*> result;
+		result.reserve(args.size() + 1);
+		for (const auto& e : args) { result.push_back(e.data()); }
+		result.push_back(nullptr);
+		return result;
 	}
 
-	SPDLOG_DEBUG("args: {}", args);
+}  // namespace
 
-	auto readLambda = [&](auto stream, auto bytes, auto n) {
-		if (readStdErr && stream != reproc::stream::err) {
-			return std::error_code();
+class Process {
+	subprocess_s process;
+	int status;
+	static constexpr auto BUFFER_SIZE = 4096u;
+
+	static std::string readStream(std::FILE* file) {
+		std::string buffer(BUFFER_SIZE, '\0'), str;
+		for (; std::fgets(buffer.data(), buffer.size(), file) != nullptr;) {
+			str += buffer.substr(0, buffer.find_first_of('\0'));
+			std::ranges::fill(buffer, '\0');
 		}
-		if (!readStdErr && stream != reproc::stream::out) {
-			return std::error_code();
+		return str;
+	}
+
+   public:
+	Process() = default;
+	Process(const Process&) = delete;
+	Process(Process&&) = delete;
+	Process& operator=(Process&&) = delete;
+	Process& operator=(const Process&) = delete;
+
+	~Process() {
+		if (isRunning()) { subprocess_terminate(&process); }
+		finish();
+		subprocess_destroy(&process);
+	}
+
+	bool start(const std::vector<std::string>& args, int options) {
+		auto aargs = convertArgs(args);
+		status = subprocess_create(aargs.data(), options, &process);
+		return status == 0;
+	}
+
+	bool isRunning() { return subprocess_alive(&process) != 0; }
+	bool failed() {
+		if (isRunning()) { return false; }
+		finish();
+		return status != 0;
+	}
+
+	void finish() { subprocess_join(&process, &status); }
+	auto getStdErr() { return readStream(subprocess_stderr(&process)); }
+	auto getStdOut() { return readStream(subprocess_stdout(&process)); }
+	[[nodiscard]] auto returnCode() const { return status; }
+
+	void lineReader(const LineScannerCallback& cb, bool readStdErr) {
+		auto reader = subprocess_read_stdout;
+		if (readStdErr) { reader = subprocess_read_stderr; }
+
+		std::string incompleteLine, buffer(BUFFER_SIZE, '\0');
+		for (auto read = reader(&process, buffer.data(), buffer.size());
+			 read > 0; read = reader(&process, buffer.data(), buffer.size())) {
+			auto data = std::string_view(buffer);
+			for (auto idx = data.find_first_of('\n');
+				 idx != std::string_view::npos;
+				 idx = data.find_first_of('\n')) {
+				incompleteLine += data.substr(0, idx);
+				if (!cb(incompleteLine)) { return; }
+			}
 		}
-		return reader(incompleteLine, cb, bytes, n);
-	};
+	}
+};
 
-	options.redirect.err.type = reproc::redirect::pipe;
-	auto status = reproc::run(args, options, readLambda, readLambda);
-	if (incompleteLine.size() > 0) { cb(incompleteLine); }
-	return status.first;
-}
+int Runner::lineScanner(
+	std::vector<std::string> args, const LineScannerCallback& cb,
+	bool readStdErr) const {
+	Process process{};
 
-auto isRunning(reproc::process& process, int& status) {
-	auto val = process.wait(reproc::milliseconds(0));
-	if (val.first == REPROC_ETIMEDOUT) { return true; }
-	status = val.first;
-	return false;
-}
+	args.insert(args.begin(), path.string());
 
-auto failed(reproc::process& process, int& status) {
-	if (isRunning(process, status)) { return false; }
-	return status != 0;
+	if (!process.start(
+			args, subprocess_option_enable_async |
+					  subprocess_option_search_user_path)) {
+		return process.returnCode();
+	}
+
+	if (cb == nullptr) {
+		process.finish();
+		return process.returnCode();
+	}
+
+	process.lineReader(cb, readStdErr);
+
+	process.finish();
+
+	return process.returnCode();
 }
 
 std::pair<int, std::string> Runner::play(
@@ -110,7 +135,7 @@ std::pair<int, std::string> Runner::play(
 		fs::remove(tempPath, err);
 	});
 
-	std::vector<std::string> args{path.string(), "-hide_banner"};
+	std::vector<std::string> args{path.string(), "-hide_banner", "-v", "error"};
 	if (inputs.empty()) {
 		args.insert(args.end(), {"-f", "lavfi", "-i", "nullsrc"});
 	} else {
@@ -129,61 +154,138 @@ std::pair<int, std::string> Runner::play(
 		args.insert(args.end(), {"-y", tempPath.string()});
 	}
 
-	reproc::options options;
-	options.redirect.err.type = reproc::redirect::pipe;
+	auto aargs = convertArgs(args);
 
+	Process ffmpeg_process;
+
+	SPDLOG_DEBUG("ffmpeg start: \"{}\"", fmt::join(args, " "));
 	// 1. Start the ffmpeg process
-	reproc::process ffmpeg;
-	SPDLOG_DEBUG("ffmpeg args: \"{}\"", fmt::join(args, " "));
+	if (!ffmpeg_process.start(args, subprocess_option_search_user_path)) {
+		return {ffmpeg_process.returnCode(), ffmpeg_process.getStdErr()};
+	}
 
-	int ffmpeg_status = 0;
-	auto ffmpeg_err = ffmpeg.start(args, options);
-	if (ffmpeg_err) { return {ffmpeg_err.value(), ffmpeg_err.message()}; }
-
-	std::string output;
-	reproc::sink::string sink(output);
-
-	// 2. Drain stdout and stderr in another thread
-	SPDLOG_DEBUG("async");
-	auto f = std::async([&]() {
-		SPDLOG_DEBUG("drain started");
-		ffmpeg_err = reproc::drain(ffmpeg, sink, sink);
-		SPDLOG_DEBUG("drain ended");
-	});
-	// 3. We have to wait until ffmpeg writes something to the file
+	// 2. We have to wait until ffmpeg writes something to the file
 	while (!fs::exists(tempPath) || fs::file_size(tempPath) == 0) {
 		SPDLOG_DEBUG(
 			"Checking for file size: {}",
 			fs::exists(tempPath) && fs::file_size(tempPath));
-		if (!isRunning(ffmpeg, ffmpeg_status)) { break; }
+		if (!ffmpeg_process.isRunning()) { break; }
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
-	if (failed(ffmpeg, ffmpeg_status)) { return {ffmpeg_status, output}; }
+	if (ffmpeg_process.failed()) {
+		return {
+			ffmpeg_process.returnCode(),
+			"ffmpeg error: " + ffmpeg_process.getStdErr()};
+	}
 
-	auto tempString = tempPath.string();
+	SPDLOG_DEBUG(
+		"Found files {} with size {}", tempPath.string(),
+		fs::file_size(tempPath));
 
 #if defined(APP_OS_WINDOWS)
 	std::vector<std::string_view> player_args{"cmd", "/C", "start"};
 #else
-	std::vector<std::string_view> player_args{};
+	std::vector<std::string> player_args{};
 #endif
 	for (auto& elem : str::split(player, '\n')) {
 		if (elem == "%f") {
-			player_args.emplace_back(tempString);
+			player_args.emplace_back(tempPath.string());
 		} else {
 			player_args.emplace_back(str::strip(elem));
 		}
 	}
 
+	auto player_aargs = convertArgs(player_args);
+
 	SPDLOG_DEBUG("player args: {}", player_args);
-	auto player_response = reproc::run(player_args);
 
-	reproc::stop_actions stop{
-		{reproc::stop::noop, 0ms},
-		{reproc::stop::terminate, 500ms},
-		{reproc::stop::kill, 200ms}};
-	ffmpeg.stop(stop);
+	Process player_process{};
 
-	return {player_response.second.value(), player_response.second.message()};
+	if (!player_process.start(
+			player_args, subprocess_option_search_user_path |
+							 subprocess_option_inherit_environment)) {
+		return {player_process.returnCode(), player_process.getStdErr()};
+	}
+
+	player_process.finish();
+
+	return {player_process.returnCode(), player_process.getStdErr()};
+}
+
+bool try_ffprobe(MediaInfo& info, const std::filesystem::path& p) {
+	std::vector<std::string> args{"ffprobe",	   "-v",
+								  "quiet",		   "-print_format",
+								  "json",		   "-show_format",
+								  "-show_streams", "-print_format",
+								  "json",		   p};
+	SPDLOG_DEBUG("ffprobe args: \"{}\"", fmt::join(args, " "));
+
+	Process ffprobe{};
+
+	if (!ffprobe.start(args, subprocess_option_search_user_path)) {
+		return false;
+	}
+
+	ffprobe.finish();
+
+	auto output = ffprobe.getStdOut();
+	SPDLOG_DEBUG("ffprobe output:\n{}", output);
+
+	nlohmann::json json;
+	try {
+		json = nlohmann::json::parse(output);
+	} catch (nlohmann::json::exception&) { return false; }
+	auto& streams = json["streams"];
+	if (streams.is_null()) { return {}; }
+	int index = 0;
+	for (auto& elem : streams) {
+		info.streams.emplace_back();
+		info.streams.back().index = index++;
+		auto& type = elem["codec_type"];
+		if (type.is_string()) {
+			info.streams.back().type = type.get<std::string>();
+		}
+		if (!elem["tags"].is_null() && elem["tags"]["title"].is_string()) {
+			info.streams.back().name = elem["tags"]["title"].get<std::string>();
+		}
+	}
+
+	return true;
+}
+
+MediaInfo Runner::getInfo(const std::filesystem::path& p) const {
+	MediaInfo info;
+	if (p.empty()) { return info; }
+	static bool can_try_ffprobe = true;
+	if (can_try_ffprobe) {
+		if (try_ffprobe(info, p)) { return info; }
+		can_try_ffprobe = false;
+	}
+	info.streams.clear();
+
+	bool inputStarted = false;
+	(void)lineScanner(
+		{"-i", p},
+		[&](std::string_view line) {
+			if (!inputStarted) {
+				inputStarted = str::starts_with(line, "Input #0");
+				return true;
+			}
+			int index = 0;
+			if (str::starts_with(line, "  Stream #0")) {
+				if (str::contains(line, "Video:")) {
+					info.streams.push_back(Stream{index++, "", "video"});
+				} else if (str::contains(line, "Audio:")) {
+					info.streams.push_back(Stream{index++, "", "audio"});
+				} else if (str::contains(line, "Subtitle:")) {
+					info.streams.push_back(Stream{index++, "", "subtitle"});
+				} else {
+					info.streams.push_back(Stream{index++, "", "video"});
+				}
+			}
+			return true;
+		},
+		true);
+	return info;
 }

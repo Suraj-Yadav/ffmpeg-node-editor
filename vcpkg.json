@@ -14,7 +14,6 @@
         },
         "gtest",
         "nlohmann-json",
-        "reproc",
         "spdlog"
     ]
 }

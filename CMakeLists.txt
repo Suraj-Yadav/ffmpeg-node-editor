@@ -7,8 +7,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS
     CACHE INTERNAL "")
 
 find_package(Backward CONFIG REQUIRED)
-find_package(reproc CONFIG REQUIRED)
-find_package(reproc++ CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
@@ -28,14 +26,8 @@ add_library(
 
 target_include_directories(core PUBLIC "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(
-  core
-  PUBLIC imgui
-         spdlog::spdlog
-         tinyfiledialogs
-         nlohmann_json::nlohmann_json
-         IconFontCppHeaders
-         reproc
-         reproc++)
+  core PUBLIC imgui spdlog::spdlog tinyfiledialogs nlohmann_json::nlohmann_json
+              IconFontCppHeaders subprocess)
 
 # Main Executable
 add_executable(ffmpeg_node_editor src/backend.cpp src/backend_glfw_opengl.cpp

@@ -1,18 +1,16 @@
 include(FetchContent)
 
 # imgui
-FetchContent_Declare(
+FetchContent_Populate(
   imgui_stack
   GIT_REPOSITORY https://github.com/thedmd/imgui.git
   GIT_TAG feature/layout)
-FetchContent_Populate(imgui_stack)
 
-FetchContent_Declare(
+FetchContent_Populate(
   imnodes
   GIT_REPOSITORY https://github.com/Nelarius/imnodes.git
   GIT_TAG master
   GIT_SUBMODULES img)
-FetchContent_Populate(imnodes)
 
 add_library(imgui STATIC)
 target_sources(
@@ -50,13 +48,12 @@ else()
 endif()
 
 # Icons
-FetchContent_Declare(
+FetchContent_Populate(
   icon_fonts
   GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
   GIT_TAG main
   PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/IconFontCppHeaders.patch
   UPDATE_DISCONNECTED 1)
-FetchContent_Populate(icon_fonts)
 
 execute_process(
   COMMAND python "${icon_fonts_SOURCE_DIR}/GenerateIconFontCppHeaders.py"
@@ -67,12 +64,20 @@ target_include_directories(IconFontCppHeaders SYSTEM
                            INTERFACE "${icon_fonts_SOURCE_DIR}")
 
 # tinyfiledialogs
-FetchContent_Declare(
+FetchContent_Populate(
   tfd
   GIT_REPOSITORY https://git.code.sf.net/p/tinyfiledialogs/code
   GIT_TAG master)
-FetchContent_Populate(tfd)
 
 add_library(tinyfiledialogs STATIC)
 target_sources(tinyfiledialogs PRIVATE ${tfd_SOURCE_DIR}/tinyfiledialogs.c)
 target_include_directories(tinyfiledialogs SYSTEM PUBLIC ${tfd_SOURCE_DIR})
+
+# subprocess
+FetchContent_Populate(
+  subproc
+  GIT_REPOSITORY https://github.com/sheredom/subprocess.h
+  GIT_TAG master)
+
+add_library(subprocess INTERFACE)
+target_include_directories(subprocess SYSTEM INTERFACE "${subproc_SOURCE_DIR}")
