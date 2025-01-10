@@ -1,51 +1,61 @@
 #include "file_utils.hpp"
 
+#include <tinyfiledialogs.h>
+
+#include <algorithm>
+#include <array>
+#include <filesystem>
+#include <string>
+#include <string_utils.hpp>
+#include <string_view>
+
+#include "util.hpp"
+
+std::optional<std::filesystem::path> openFile() {
+	auto* selection =
+		tinyfd_openFileDialog("Open File", nullptr, 0, nullptr, nullptr, 0);
+	if (selection == nullptr) { return {}; }
+	return selection;
+}
+std::optional<std::filesystem::path> saveFile(std::string_view fileType) {
+	std::array<const char*, 1> type{fileType.data()};
+	auto* selection =
+		tinyfd_saveFileDialog("Save File", nullptr, 1, type.data(), nullptr);
+	if (selection == nullptr) { return {}; }
+	fileType.remove_prefix(1);
+	if (str::ends_with(selection, fileType)) { return selection; }
+	return selection + std::string(fileType);
+	return selection;
+}
+
+void showErrorMessage(std::string const& title, std::string const& text) {
+	std::string title_copy = title, text_copy = text;
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '|');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '|');
+	tinyfd_messageBox(title_copy.c_str(), text_copy.c_str(), "ok", "error", 0);
+}
+
+int showActionDialog(
+	std::string const& title, std::string const& text, std::string_view type) {
+	std::string title_copy = title, text_copy = text;
+	std::replace(title_copy.begin(), title_copy.end(), '\'', '|');
+	std::replace(title_copy.begin(), title_copy.end(), '"', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '\'', '|');
+	std::replace(text_copy.begin(), text_copy.end(), '"', '|');
+	return tinyfd_messageBox(
+		title_copy.c_str(), text_copy.c_str(), "yesnocancel", "question", 0);
+}
+
+#if defined(APP_OS_WINDOWS)
 #include <Windows.h>
-#include <absl/strings/string_view.h>
-#include <minwindef.h>
-#include <nfd.h>
-#include <spdlog/spdlog.h>
 #include <wingdi.h>
 #include <winnt.h>
 #include <winreg.h>
 
-#include <cstddef>
-#include <cstring>
-#include <filesystem>
-#include <string>
-
-std::optional<std::filesystem::path> openFile() {
-	nfdchar_t* outPath = nullptr;
-	nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
-	if (result == NFD_OKAY) {
-		std::filesystem::path v(outPath);
-		free(outPath);
-		return v;
-	} else if (result == NFD_CANCEL) {
-		return {};
-	} else {
-		throw std::runtime_error(NFD_GetError());
-	}
-	return {};
-}
-std::optional<std::filesystem::path> saveFile() {
-	nfdchar_t* savePath = nullptr;
-	nfdresult_t result = NFD_SaveDialog("json", NULL, &savePath);
-	if (result == NFD_OKAY) {
-		std::filesystem::path v(savePath);
-		if (!v.has_extension()) { v.replace_extension(".json"); }
-		free(savePath);
-		return v;
-	} else if (result == NFD_CANCEL) {
-		return {};
-	} else {
-		throw std::runtime_error(NFD_GetError());
-	}
-	return {};
-}
-
 std::string GetRegString(
-	HKEY key, absl::string_view subKey, absl::string_view valueName) {
+	HKEY key, std::string_view subKey, std::string_view valueName) {
 	DWORD keyType = 0;
 	DWORD dataSize = 0;
 	const DWORD flags = RRF_RT_REG_SZ;	// Only read strings (REG_SZ)
@@ -83,18 +93,19 @@ std::optional<std::filesystem::path> selectFont() {
 	if (::ChooseFont(&cf) == TRUE) {
 		auto path = GetRegString(
 			HKEY_LOCAL_MACHINE,
-			"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+			R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts)",
 			std::string(cf.lpLogFont->lfFaceName) + " (TrueType)");
 		if (path.empty()) {
 			path = GetRegString(
 				HKEY_CURRENT_USER,
-				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+				R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts)",
 				std::string(cf.lpLogFont->lfFaceName) + " (TrueType)");
 		} else {
-			path = "C:\\Windows\\Fonts\\" + path;
+			path = R"(C:\Windows\Fonts\)" + path;
 		}
 		if (!path.empty() && std::filesystem::exists(path)) { return path; }
 	}
 
 	return {};
 }
+#endif

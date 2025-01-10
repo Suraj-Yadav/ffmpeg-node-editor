@@ -1,58 +1,43 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/overlays" CACHE INTERNAL "")
-project(ffmpeg_node_editor LANGUAGES CXX)
+project(ffmpeg_node_editor LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPORT_COMPILE_COMMANDS
+    ON
+    CACHE INTERNAL "")
 
-find_package(absl CONFIG REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(imgui CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(OpenGL REQUIRED)
-find_package(re2 CONFIG REQUIRED)
+find_package(Backward CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(tiny-process-library CONFIG REQUIRED)
-find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
-find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
-add_executable(ffmpeg_node_editor 
-    src/backend.cpp
-    src/ffmpeg/filter_graph.cpp
-    src/ffmpeg/profile.cpp
-    src/ffmpeg/runner.cpp
-    src/file_utils.cpp
-    src/imgui_extras.cpp
-    src/main.cpp
-    src/node_editor.cpp
-    src/pref.cpp
-)
+# Import non vcpkg stuff
+add_subdirectory(./third_party)
 
-target_include_directories(ffmpeg_node_editor PUBLIC "${CMAKE_SOURCE_DIR}/include")
+add_library(
+  core STATIC
+  src/ffmpeg/filter_graph.cpp
+  src/ffmpeg/profile.cpp
+  src/ffmpeg/runner.cpp
+  src/file_utils.cpp
+  src/imgui_extras.cpp
+  src/node_editor.cpp
+  src/pref.cpp
+  src/string_utils.cpp)
 
-target_link_libraries(ffmpeg_node_editor PRIVATE 
-    ${OPENGL_gl_LIBRARY}
-    absl::strings 
-    glfw 
-    imgui::imgui 
-    nlohmann_json::nlohmann_json
-    re2::re2
-    spdlog::spdlog
-    tiny-process-library::tiny-process-library 
-    unofficial::imgui-node-editor::imgui-node-editor 
-    unofficial::nativefiledialog::nfd
-    )
-    
-    
+target_include_directories(core PUBLIC "${CMAKE_SOURCE_DIR}/include")
+target_link_libraries(
+  core PUBLIC imgui spdlog::spdlog tinyfiledialogs nlohmann_json::nlohmann_json
+              IconFontCppHeaders subprocess)
+
+# Main Executable
+add_executable(ffmpeg_node_editor src/backend.cpp src/backend_glfw_opengl.cpp
+                                  src/backend_win32_d3d12.cpp src/main.cpp)
+target_link_libraries(ffmpeg_node_editor PRIVATE core Backward::Interface)
+
 # Setup Test, coverage and benchmarks
 find_package(GTest CONFIG REQUIRED)
 
-SET(TEST_SRCS
-src/imgui_extras.cpp
-src/imgui_extras_test.cpp
-)
+add_executable(tests src/ffmpeg/runner_test.cpp src/imgui_extras_test.cpp
+                     src/util_test.cpp)
 
-add_executable(tests ${TEST_SRCS})
-target_include_directories(tests PUBLIC "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(tests PRIVATE GTest::gtest GTest::gtest_main absl::strings imgui::imgui spdlog::spdlog)
-
+target_link_libraries(tests PRIVATE GTest::gtest GTest::gtest_main core)

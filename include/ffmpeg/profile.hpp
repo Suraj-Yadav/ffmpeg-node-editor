@@ -1,16 +1,16 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/runner.hpp"
 
-class Profile {
-   public:
+struct Profile {
 	std::vector<Filter> filters;
 	Runner runner;
 
-	Profile(Runner r) : runner(r) {}
+	Profile(Runner r) : runner(std::move(r)) {}
 };
 
 Profile GetProfile();

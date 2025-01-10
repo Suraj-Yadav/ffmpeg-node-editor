@@ -1,76 +1,93 @@
 #include "pref.hpp"
 
-#include <absl/strings/str_split.h>
-#include <absl/strings/string_view.h>
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <spdlog/spdlog.h>
+#include <imnodes.h>
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <stdexcept>
 #include <string>
 
 #include "imgui_extras.hpp"
-
-namespace ed = ax::NodeEditor;
+#include "string_utils.hpp"
+#include "util.hpp"
 
 Style::Style() : colorPicker(0) {
 	using namespace ImGui;
 
-	ed::Style v;
-	colors[NodeHeader] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[NodeBg] = v.Colors[ed::StyleColor_NodeBg];
-	colors[Border] = v.Colors[ed::StyleColor_NodeBorder];
-	// colors[Wire] = v.Colors[ed::StyleColor_];
-	colors[VideoSocket] = ColorConvertU32ToFloat4(IM_COL32(255, 0, 0, 255));
-	colors[AudioSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 255, 0, 255));
-	colors[SubtitleSocket] = ColorConvertU32ToFloat4(IM_COL32(0, 0, 255, 255));
+	ImNodesStyle style;
+	ImNodes::StyleColorsDark(&style);
+
+	colors[StyleColor::NodeHeader] = style.Colors[ImNodesCol_TitleBar];
+	colors[StyleColor::NodeBg] = style.Colors[ImNodesCol_NodeBackground];
+	colors[StyleColor::Border] = style.Colors[ImNodesCol_NodeOutline];
+	colors[StyleColor::Wire] = style.Colors[ImNodesCol_Link];
+	colors[StyleColor::VideoSocket] = IM_COL32(255, 0, 0, 255);
+	colors[StyleColor::AudioSocket] = IM_COL32(0, 255, 0, 255);
+	colors[StyleColor::SubtitleSocket] = IM_COL32(0, 0, 255, 255);
 }
 
 Preference::Preference()
-	: style(),
-	  font("C:\\Windows\\Fonts\\segoeui.ttf"),
+	:
+#if defined(APP_OS_WINDOWS)
+	  font(R"(C:\Windows\Fonts\segoeui.ttf)"),
+#elif defined(APP_OS_LINUX)
+	  font(R"(/usr/share/fonts/abattis-cantarell-fonts/Cantarell-Regular.otf)"),
+#endif
 	  fontSize(24),
-	  player("vlc\n%f") {}
+	  player("vlc\n%f") {
+}
 
 Paths::Paths() {
-	auto p = std::getenv("APPDATA");
-	if (p == nullptr) {
+#if defined(APP_OS_WINDOWS)
+	char* p = nullptr;
+	size_t len = 0;
+	if (_dupenv_s(&p, &len, "APPDATA") == 0) { appDir = p; }
+#elif defined(APP_OS_LINUX)
+	auto* p = std::getenv("HOME");
+	if (p != nullptr) {
+		appDir = std::filesystem::path(p) / ".local" / "share";
+	}
+#endif
+	if (appDir.empty()) {
 		SPDLOG_ERROR("Unable to find appdata folder");
 		throw std::invalid_argument("Unable to find appdata folder");
 	}
-	std::filesystem::path root(p);
-	root = root / "ffmpeg-node-editor";
 
-	std::filesystem::create_directories(root);
+	appDir = appDir / "ffmpeg-node-editor";
+	std::filesystem::create_directories(appDir);
 
-	prefs = root / "prefs.json";
+	prefs = appDir / "prefs.json";
+	iniFile = (appDir / "imgui.ini").string();
 }
 
-const Paths path;
-
-absl::string_view StyleColorName(StyleColor val) {
-#define CASE(VAL) \
-	case VAL:     \
-		return #VAL
+std::string_view StyleColorName(StyleColor val) {
 	switch (val) {
-		CASE(NodeHeader);
-		CASE(NodeBg);
-		CASE(Border);
-		CASE(Wire);
-		CASE(VideoSocket);
-		CASE(AudioSocket);
-		CASE(SubtitleSocket);
-		case COUNT:
-			return "";
+		case StyleColor::NodeHeader:
+			return "NodeHeader";
+		case StyleColor::NodeBg:
+			return "NodeBg";
+		case StyleColor::Border:
+			return "Border";
+		case StyleColor::Wire:
+			return "Wire";
+		case StyleColor::VideoSocket:
+			return "VideoSocket";
+		case StyleColor::AudioSocket:
+			return "AudioSocket";
+		case StyleColor::SubtitleSocket:
+			return "SubtitleSocket";
 	}
-#undef CASE
 	return "";
+}
+
+template <typename T>
+inline void getNull(nlohmann::json& json, std::string_view name, T& dest) {
+	if (json[name].is_null()) { return; }
+	dest = json[name].get<T>();
 }
 
 bool Preference::load() {
@@ -80,34 +97,29 @@ bool Preference::load() {
 	} catch (nlohmann::json::exception&) { return false; }
 	auto& colors = json["colors"];
 	if (!colors.is_null()) {
-		for (int i = 0; i < StyleColor::COUNT; ++i) {
-			auto name = StyleColorName(StyleColor(i));
+		for (auto& elem : style.colors) {
+			auto name = StyleColorName(elem.first);
 			if (!colors[name].is_null()) {
-				style.colors[i] = ImGui::ColorConvertHexToFloat4(
+				elem.second = ImGui::ColorConvertHexToU32(
 					colors[name].get<std::string>());
 			}
 		}
 	}
-#define SET(X, Y, T) \
-	if (!json[X].is_null()) { (Y) = json[X].get<T>(); }
 
-	SET("font", font, std::filesystem::path);
-	SET("font_size", fontSize, int);
-	SET("color_picker", style.colorPicker, int);
-	SET("player", player, std::string);
-
-#undef SET
-	return true;
+	getNull(json, "font", font);
+	getNull(json, "font_size", fontSize);
+	getNull(json, "color_picker", style.colorPicker);
+	getNull(json, "player", player);
+	unsaved = false;
+	return false;
 }
 
 bool Preference::save() {
 	nlohmann::json obj;
 	using namespace ImGui;
 	auto& colors = obj["colors"];
-
-	for (int i = 0; i < StyleColor::COUNT; ++i) {
-		colors[StyleColorName(StyleColor(i))] =
-			ColorConvertFloat4ToHex(style.colors[i]);
+	for (auto& elem : style.colors) {
+		colors[StyleColorName(elem.first)] = ColorConvertU32ToHex(elem.second);
 	}
 	obj["color_picker"] = style.colorPicker;
 	obj["font"] = font.string();
@@ -118,87 +130,98 @@ bool Preference::save() {
 
 	std::ofstream o(path.prefs, std::ios_base::binary);
 	o << std::setw(4) << obj;
+	unsaved = false;
 	return true;
 }
 
 void Preference::draw() {
+	if (!isOpen) { return; }
 	using namespace ImGui;
-	if (ImGui::Begin("Edit Preference")) {
+	bool changed = false;
+	if (ImGui::Begin(
+			"Edit Preference", &isOpen, UnsavedDocumentFlag(unsaved))) {
 		BeginVertical("preference");
 		PushID("preference");
 		if (CollapsingHeader("Colors")) {
-			for (int i = 0; i < StyleColor::COUNT; ++i) {
-				PushID(i);
-				BeginHorizontal(i);
-				Text("%s", StyleColorName(StyleColor(i)).data());
+			for (auto& elem : style.colors) {
+				PushID(&elem);
+				BeginHorizontal(&elem);
+				Text(StyleColorName(elem.first));
 				Spring();
-				ColorEdit4(
-					"##col", &style.colors[i].x,
-					(style.colorPicker == 0
-						 ? ImGuiColorEditFlags_PickerHueBar
-						 : ImGuiColorEditFlags_PickerHueWheel) |
-						ImGuiColorEditFlags_NoInputs |
-						ImGuiColorEditFlags_NoTooltip);
+				if (ImVec4 col = ColorConvertU32ToFloat4(elem.second);
+					ColorEdit4("##col", &col.x)) {
+					changed = true;
+					elem.second = ColorConvertFloat4ToU32(col);
+				}
 				EndHorizontal();
 				PopID();
 			}
 		}
-		int id = -1;
-		if (CollapsingHeader("UI"), ImGuiTreeNodeFlags_DefaultOpen) {
+		auto width = 0.0f;
+		if (CollapsingHeader("UI", ImGuiTreeNodeFlags_DefaultOpen)) {
 			{
-				BeginHorizontal(id--);
-				Text("Color Selector");
+				BeginHorizontal(&style.colorPicker);
+				TextUnformatted("Color Selector");
 				Spring();
-				Combo("##picker", &style.colorPicker, "HueBar\0HueWheel\0");
+				if (Combo(
+						"##picker", &style.colorPicker, "HueBar\0HueWheel\0")) {
+					changed = true;
+				}
+				width = GetItemRectSize().x;
 				EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
-				Text("Font");
+				BeginHorizontal(&font);
+				TextUnformatted("Font");
 				Spring();
 				auto fontStr = font.string();
-				if (InputFont("##font", fontStr)) { font = fontStr; }
+				if (InputFont("##font", fontStr, width)) { font = fontStr; }
 				EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
-				Text("Font Size");
+				BeginHorizontal(&fontSize);
+				TextUnformatted("Font Size");
 				Spring();
 				DragInt("##fonstsize", &fontSize, 1.0f, 12, 1000);
 				EndHorizontal();
 			}
 			{
-				BeginHorizontal(id--);
-				Text("Player");
+				BeginHorizontal(&player);
+				TextUnformatted("Player");
 				if (ImGui::BeginItemTooltip()) {
-					ImGui::Text("Requirements:");
-					ImGui::Text("a command to invoke player for preview");
-					ImGui::Text(
+					TextUnformatted("Requirements:");
+					TextUnformatted("a command to invoke player for preview");
+					TextUnformatted(
 						"command should block and wait for user to exit the "
 						"player");
-					ImGui::Text("each argument should be in a separate line");
-					ImGui::Text("do not use \" or ' to quote args with space");
-					ImGui::Text(
-						"use '%%f' to specify where filename should be put");
-					ImGui::Text("Eg (assuming vlc is in PATH)\n\tvlc\n\t%%f ");
-					ImGui::EndTooltip();
+					TextUnformatted(
+						"each argument should be in a separate line");
+					TextUnformatted(
+						"do not use \" or ' to quote args with space");
+					TextUnformatted(
+						"use '%f' to specify where filename should be put");
+					TextUnformatted(
+						"Eg (assuming vlc is in PATH)\n\tvlc\n\t%f ");
+					EndTooltip();
 				}
 				Spring();
 				if (InputTextMultiline("##player", &player)) {
-					for (auto& elem :
-						 absl::StrSplit(player, '\n', absl::SkipWhitespace())) {
-						SPDLOG_INFO("elem = {}", std::string(elem));
+					for (auto& elem : str::split(player, '\n')) {
+						SPDLOG_DEBUG("elem = {}", str::strip(elem));
 					};
 				}
-
 				EndHorizontal();
 			}
 		}
 		{
-			BeginHorizontal(id--);
+			BeginHorizontal(this);
 			Spring();
-			if (Button("Reset")) { *this = {}; }
-			Spring();
+			if (Button("Reset")) {
+				*this = {};
+				isOpen = true;
+				changed = true;
+			}
+			Spring(0.5);
 			if (Button("Save")) { save(); }
 			Spring();
 			EndHorizontal();
@@ -207,4 +230,46 @@ void Preference::draw() {
 		EndVertical();
 	}
 	ImGui::End();
+	unsaved = unsaved || changed;
+
+	if (!isOpen) { close(); }
+
+	if (changed) { setOptions(); }
+}
+
+void Preference::close() {
+	using namespace ImGui;
+	isOpen = false;
+
+	switch (UnsavedDocumentClose(
+		unsaved, isOpen, "Unsaved Preference Changes",
+		"Do you want to save current preferences?")) {
+		case UnsavedDocumentAction::SAVE_CHANGES:
+			save();
+			break;
+		case UnsavedDocumentAction::CANCEL_CLOSE:
+			isOpen = true;
+			break;
+		case UnsavedDocumentAction::DISCARD_CHANGES:
+			load();
+			break;
+		case UnsavedDocumentAction::NO_OP:
+			break;
+	}
+}
+
+void Preference::setOptions() const {
+	ImNodesStyle& imNodesStyle = ImNodes::GetStyle();
+	imNodesStyle.Colors[ImNodesCol_TitleBar] =
+		style.colors.at(StyleColor::NodeHeader);
+	imNodesStyle.Colors[ImNodesCol_NodeBackground] =
+		style.colors.at(StyleColor::NodeBg);
+	imNodesStyle.Colors[ImNodesCol_NodeOutline] =
+		style.colors.at(StyleColor::Border);
+	imNodesStyle.Colors[ImNodesCol_Link] = style.colors.at(StyleColor::Wire);
+
+	ImGui::SetColorEditOptions(
+		(style.colorPicker == 0 ? ImGuiColorEditFlags_PickerHueBar
+								: ImGuiColorEditFlags_PickerHueWheel) |
+		ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
 }

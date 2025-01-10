@@ -2,9 +2,8 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include <absl/strings/string_view.h>
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
+#include <imnodes.h>
 
 #include <filesystem>
 #include <memory>
@@ -12,11 +11,11 @@
 #include "ffmpeg/filter_graph.hpp"
 #include "pref.hpp"
 
-class FilterNode;
-class Profile;
+struct FilterNode;
+struct Profile;
 
 struct Popup {
-	absl::string_view type;
+	std::string_view type;
 	std::string msg;
 	NodeId nodeId;
 	int optId;
@@ -27,27 +26,32 @@ struct Popup {
 
 class NodeEditor {
 	FilterGraph g;
-	std::shared_ptr<ax::NodeEditor::EditorContext> context;
+	std::shared_ptr<ImNodesEditorContext> context;
 
 	bool searchStarted = false;
 	ImGuiTextFilter searchFilter;
 
-	Popup popup;
+	NodeId selectedNodeId = INVALID_NODE;
 
 	void drawNode(const Style& style, const FilterNode& node, const NodeId& id);
-	void searchBar();
-	void popups(const Preference& pref);
+	void handleEdits(const Preference& pref);
 
 	std::string name;
 	std::filesystem::path path;
 
+	bool isOpen = true;
+
    public:
-	NodeEditor(const Profile& p, const std::string& n);
-	~NodeEditor();
-	const std::string getName() const;
-	const std::filesystem::path& getPath() const { return path; };
+	NodeEditor(const Profile& p, std::string n);
+	[[nodiscard]] std::string getName() const;
+	[[nodiscard]] const std::filesystem::path& getPath() const { return path; };
 	void setPath(std::filesystem::path& p) { path = p; };
-	bool draw(const Preference& pref);
-	bool save(const std::filesystem::path& path) const;
+	void draw(const Preference& pref, bool& focused);
+
+	[[nodiscard]] bool isClosed() const { return !isOpen; }
+	void close();
+
+	[[nodiscard]] bool hasChanges() const { return g.changed(); }
+	bool save();
 	bool load(const std::filesystem::path& path);
 };

@@ -19,23 +19,32 @@ std::ostream& operator<<(std::ostream& os, const T& v) {
 }
 
 TEST(ColorConvertHexToU32, Simple) {
-	EXPECT_EQ(T{ColorConvertHexToU32("#FF0000")}, T{0xfF0000FF});
-	EXPECT_EQ(T{ColorConvertHexToU32("0xFF0000")}, T{0xFF0000FF});
-	EXPECT_EQ(T{ColorConvertHexToU32("#FF000000")}, T{0xFF000000});
-	EXPECT_EQ(T{ColorConvertHexToU32("#FF00FF")}, T{0xFF00FFFF});
+	EXPECT_EQ(T{ColorConvertHexToU32("#FF0000")}, T{IM_COL32(255, 0, 0, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("0xFF0000")}, T{IM_COL32(255, 0, 0, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("#FF000000")}, T{IM_COL32(255, 0, 0, 0)});
+	EXPECT_EQ(
+		T{ColorConvertHexToU32("#FF00FF")}, T{IM_COL32(255, 0, 255, 255)});
+	EXPECT_EQ(
+		T{ColorConvertHexToU32("#00FF00FF")}, T{IM_COL32(0, 255, 0, 255)});
 }
 
 TEST(ColorConvertHexToU32, Constants) {
-	EXPECT_EQ(T{ColorConvertHexToU32("black")}, T{0x000000FF});
-	EXPECT_EQ(T{ColorConvertHexToU32("red")}, T{0xFF0000FF});
-	EXPECT_EQ(T{ColorConvertHexToU32("green")}, T{0x00FF00FF});
-	EXPECT_EQ(T{ColorConvertHexToU32("blue")}, T{0x0000FFFF});
-	EXPECT_EQ(T{ColorConvertHexToU32("pink")}, T{0xFFC0CBFF});
+	EXPECT_EQ(T{ColorConvertHexToU32("black")}, T{IM_COL32(0, 0, 0, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("red")}, T{IM_COL32(255, 0, 0, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("green")}, T{IM_COL32(0, 255, 0, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("blue")}, T{IM_COL32(0, 0, 255, 255)});
+	EXPECT_EQ(T{ColorConvertHexToU32("pink")}, T{IM_COL32(255, 192, 203, 255)});
 }
 
 TEST(ColorConvertHexToU32, Alpha) {
-	EXPECT_EQ(T{ColorConvertHexToU32("#FF0000@0x23")}, T{0xFF000023});
-	EXPECT_EQ(T{ColorConvertHexToU32("#FF0000@0.5")}, T{0xFF00007F});
-	EXPECT_EQ(T{ColorConvertHexToU32("red@0x23")}, T{0xFF000023});
-	EXPECT_EQ(T{ColorConvertHexToU32("red@0.5")}, T{0xFF00007F});
+	EXPECT_EQ(
+		T{ColorConvertHexToU32("#FF0000@0x23")}, T{IM_COL32(255, 0, 0, 35)});
+	EXPECT_EQ(
+		T{ColorConvertHexToU32("#FF0000@0.5")}, T{IM_COL32(255, 0, 0, 127)});
+	EXPECT_EQ(T{ColorConvertHexToU32("red@0x23")}, T{IM_COL32(255, 0, 0, 35)});
+	EXPECT_EQ(T{ColorConvertHexToU32("red@0.5")}, T{IM_COL32(255, 0, 0, 127)});
+}
+
+TEST(ColorConvertU32ToHex, Simple) {
+	EXPECT_EQ(ColorConvertU32ToHex(IM_COL32(255, 0, 0, 255)), "#FF0000FF");
 }

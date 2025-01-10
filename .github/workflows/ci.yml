@@ -7,11 +7,10 @@ on:
     tags:
       - '**'        # matches every tag
 jobs:
-  build-windows:
+  build:
     env:
-      VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -21,9 +20,11 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - run: pip install PyYAML requests
+      - run: sudo apt install libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules libglu1-mesa-dev
       - name: cmake configure
         run: |
-          $env:CMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          export CMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
           cmake -B build -S .
       - name: cmake build
         run: cmake --build build --config Release

@@ -1,95 +1,101 @@
 #include "node_editor.hpp"
 
-#include <absl/strings/match.h>
-#include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <fstream>
+#include <iterator>
 #include <nlohmann/json.hpp>
+#include <utility>
 
-#include "extras/IconsFontAwesome6.h"
 #include "ffmpeg/filter.hpp"
 #include "ffmpeg/filter_graph.hpp"
 #include "ffmpeg/filter_node.hpp"
 #include "ffmpeg/profile.hpp"
 #include "file_utils.hpp"
 #include "imgui_extras.hpp"
+#include "string_utils.hpp"
 #include "util.hpp"
 
-namespace ed = ax::NodeEditor;
-
-NodeEditor::NodeEditor(const Profile& p, const std::string& n)
-	: g(p), popup({""}), name(n) {
-	ed::Config config;
-	config.SettingsFile = nullptr;
-	context = std::shared_ptr<ed::EditorContext>(
-		ed::CreateEditor(&config), ed::DestroyEditor);
+NodeEditor::NodeEditor(const Profile& p, std::string n)
+	: g(p), name(std::move(n)) {
+	context = std::shared_ptr<ImNodesEditorContext>(
+		ImNodes::EditorContextCreate(), ImNodes::EditorContextFree);
 }
 
-NodeEditor::~NodeEditor() {}
+auto InputTextWithCompletion(
+	const char* label, std::string& value,
+	const std::vector<AllowedValues>& allowed) {
+	using namespace ImGui;
+	constexpr auto POPUP_OPTION_COMPLETION = "Completion";
 
-const auto POPUP_MISSING_INPUT = "Missing Input";
-const auto POPUP_PREVIEW_ERROR = "ffmpeg Error";
-const auto POPUP_NODE_OPTIONS = "Node Options";
-const auto POPUP_OPTION_COMPLETION = "Completion";
-const auto POPUP_OPTION_COLOR = "Color";
+	auto changed = false;
 
-#define PLAY_BUTTON_ID(X) int(((X) << 4) + 1)
-#define OPT_BUTTON_ID(X)  int(((X) << 4) + 2)
-#define OPT_ID(X)		  int(((X) << 4) + 3)
+	const bool isInputTextEnterPressed =
+		InputText(label, &value, ImGuiInputTextFlags_EnterReturnsTrue);
+	const bool isInputTextActive = IsItemActive();
+	const bool isInputTextActivated = IsItemActivated();
+
+	if (isInputTextActivated) { OpenPopup(POPUP_OPTION_COMPLETION); }
+
+	SetNextWindowPos(ImVec2(GetItemRectMin().x, GetItemRectMax().y));
+
+	if (BeginPopup(
+			POPUP_OPTION_COMPLETION,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
+		for (const auto& elem : allowed) {
+			if (str::contains(elem.value, value, true) ||
+				str::contains(elem.desc, value, true)) {
+				if (Selectable(elem.value.c_str())) { value = elem.value; }
+				SameLine();
+				Text(elem.desc);
+			}
+		}
+
+		if (isInputTextEnterPressed ||
+			(!isInputTextActive && !IsWindowFocused())) {
+			ImGui::CloseCurrentPopup();
+			changed = true;
+		}
+
+		EndPopup();
+	}
+	return changed;
+}
 
 bool drawOption(
 	const NodeId& id, const Option& option, int optId, std::string& value,
-	const float& width, Popup& popup) {
+	const float& width) {
 	using namespace ImGui;
 
 	bool changed = false;
 	BeginHorizontal(option.name.data());
 	Text(option.name);
-	ed::Suspend();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
 		ImGui::SetTooltip("%s", option.desc.data());
 	}
-	ed::Resume();
 	Spring();
 
 	PushItemWidth(width);
 	PushID(option.name.c_str());
 	if (option.allowed.size() > 0) {
-		changed = InputText("", &value, ImGuiInputTextFlags_EnterReturnsTrue);
-		if (IsItemActivated()) {
-			popup.type = POPUP_OPTION_COMPLETION;
-			popup.nodeId = id;
-			popup.optId = optId;
-			popup.isInputTextActive = IsItemActive();
-			popup.isInputTextEnterPressed = changed;
-			popup.position = ed::CanvasToScreen(GetItemRectPoint(0, 1));
-		}
+		changed = InputTextWithCompletion("", value, option.allowed);
 	} else {
-		changed = ImGui::InputText("", &value);
-		if (absl::EndsWithIgnoreCase(option.name, "path") ||
-			absl::EndsWithIgnoreCase(option.name, "file") ||
-			absl::EndsWithIgnoreCase(option.name, "filename")) {
-			Spring(0, 0);
-			if (Button(ICON_FA_FOLDER_OPEN)) {
-				auto path = openFile();
-				if (path.has_value()) {
-					value = path->string();
-					changed = true;
-				}
-			}
+		if (str::ends_with(option.name, "fontfile")) {
+			changed = InputFont("", value, width);
+		} else if (
+			str::ends_with(option.name, "path", true) ||
+			str::ends_with(option.name, "file", true) ||
+			str::ends_with(option.name, "filename", true)) {
+			changed = InputFile("", value, width);
 		} else if (option.type == "boolean") {
-			bool v = value == "1";
-			if (Checkbox("##b", &v)) { value = v ? "1" : "0"; }
+			changed = InputCheckbox("", value, width);
 		} else if (option.type == "color") {
-			auto color = ColorConvertHexToFloat4(value);
-			if (ColorButton("##col", color, ImGuiColorEditFlags_NoTooltip)) {
-				popup.type = POPUP_OPTION_COLOR;
-				popup.nodeId = id;
-				popup.optId = optId;
-			}
+			changed = InputColor("", value, width);
+		} else {
+			changed = ImGui::InputText("", &value);
 		}
 	}
 	PopID();
@@ -98,52 +104,64 @@ bool drawOption(
 	return changed;
 }
 
+void drawAttribute(
+	const Style& style, bool isInput, const Socket& socket,
+	const IdBaseType& id, const float& indent = 0) {
+	ImU32 col = 0;
+	switch (socket.type) {
+		case SocketType::Video:
+			col = style.colors.at(StyleColor::VideoSocket);
+			break;
+		case SocketType::Audio:
+			col = style.colors.at(StyleColor::AudioSocket);
+			break;
+		case SocketType::Subtitle:
+			col = style.colors.at(StyleColor::SubtitleSocket);
+			break;
+	}
+	ImNodes::PushColorStyle(ImNodesCol_Pin, col);
+	if (isInput) {
+		ImNodes::BeginInputAttribute(id);
+	} else {
+		ImNodes::BeginOutputAttribute(id);
+	}
+	ImGui::Text(socket.name);
+	if (isInput) {
+		ImNodes::EndInputAttribute();
+	} else {
+		ImNodes::EndOutputAttribute();
+	}
+	ImNodes::PopColorStyle();
+}
+
 void NodeEditor::drawNode(
 	const Style& style, const FilterNode& node, const NodeId& id) {
 	using namespace ImGui;
 
-	const auto nodeId = id.val;
-	ed::BeginNode(nodeId);
+	PushID(&node);
 
-	const auto& nodeStyle = ed::GetStyle();
-	const auto lPad = nodeStyle.NodePadding.x;
-	const auto rPad = nodeStyle.NodePadding.z;
-	const auto borderW = nodeStyle.NodeBorderWidth;
-	const float pinRadius = 5;
-	const auto nSize = ed::GetNodeSize(nodeId);
-	const auto nPos = ed::GetNodePosition(nodeId);
+	const auto nodeId = id.val;
+	ImNodes::BeginNode(nodeId);
 
 	BeginVertical(&node);
 
-	BeginHorizontal(&nodeId);
-	Spring();
-	Text(node.name);
-	Spring();
-	EndHorizontal();
+	{
+		// Suspend and resume needed as title
+		// bar adds to layout width
+		SuspendLayout();
+		ImNodes::BeginNodeTitleBar();
+		ResumeLayout();
+		BeginHorizontal(&nodeId);
+		Spring();
+		Text(node.name);
+		Spring();
+		EndHorizontal();
+		SuspendLayout();
+		ImNodes::EndNodeTitleBar();
+		ResumeLayout();
+	}
 
 	std::vector<std::pair<ImVec2, ImColor>> pins;
-
-#define DRAW_INPUT_SOCKET(SOCKET, ID)                             \
-	ed::BeginPin((ID), ed::PinKind::Input);                       \
-	Text((SOCKET).name);                                          \
-	pins.emplace_back(                                            \
-		GetItemRectPoint(0, 0.5) - ImVec2(lPad - borderW / 2, 0), \
-		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
-	ed::PinRect(                                                  \
-		pins.back().first - ImVec2(pinRadius, pinRadius),         \
-		pins.back().first + ImVec2(pinRadius, pinRadius));        \
-	ed::EndPin();
-
-#define DRAW_OUTPUT_SOCKET(SOCKET, ID)                            \
-	ed::BeginPin((ID), ed::PinKind::Output);                      \
-	Text((SOCKET).name);                                          \
-	pins.emplace_back(                                            \
-		GetItemRectPoint(1, 0.5) + ImVec2(rPad + borderW / 2, 0), \
-		style.colors[(SOCKET).type + StyleColor::VideoSocket]);   \
-	ed::PinRect(                                                  \
-		pins.back().first - ImVec2(pinRadius, pinRadius),         \
-		pins.back().first + ImVec2(pinRadius, pinRadius));        \
-	ed::EndPin();
 
 	{
 		// Both
@@ -154,16 +172,16 @@ void NodeEditor::drawNode(
 			const auto& out = node.output()[i];
 			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&inID.val);
-			DRAW_INPUT_SOCKET(in, inID.val);
+			drawAttribute(style, true, in, inID.val);
 			Spring();
-			DRAW_OUTPUT_SOCKET(out, outID.val);
+			drawAttribute(style, false, out, outID.val);
 			EndHorizontal();
 		}
 		// Only input
 		for (auto i = limit; i < node.input().size(); ++i) {
 			const auto& in = node.input()[i];
 			const auto& inID = node.inputSocketIds[i];
-			DRAW_INPUT_SOCKET(in, inID.val);
+			drawAttribute(style, true, in, inID.val);
 		}
 		// Only output
 		for (auto i = limit; i < node.output().size(); ++i) {
@@ -171,13 +189,13 @@ void NodeEditor::drawNode(
 			const auto& outID = node.outputSocketIds[i];
 			BeginHorizontal(&outID.val);
 			Spring();
-			DRAW_OUTPUT_SOCKET(out, outID.val);
+			drawAttribute(style, false, out, outID.val);
 			EndHorizontal();
 		}
 	}
 
 	if (node.option.size() > 0) {
-		PushID(OPT_ID(nodeId));
+		PushID(&node.option);
 		{
 			const auto& options = node.base().options;
 			auto maxTextWidth = ImGui::CalcTextSize(node.name.c_str()).x;
@@ -188,8 +206,7 @@ void NodeEditor::drawNode(
 			}
 			for (auto& [optIdx, optValue] : g.getNode(id).option) {
 				if (drawOption(
-						id, options[optIdx], optIdx, optValue, maxTextWidth,
-						popup)) {
+						id, options[optIdx], optIdx, optValue, maxTextWidth)) {
 					g.optHook(id, optIdx, optValue);
 				}
 			}
@@ -198,261 +215,212 @@ void NodeEditor::drawNode(
 	}
 
 	EndVertical();
-	ed::EndNode();
+	ImNodes::EndNode();
 
-	const auto list = ed::GetNodeBackgroundDrawList(nodeId);
-	list->AddRectFilled(
-		nPos + ImVec2(borderW / 2, borderW / 2),
-		nPos + ImVec2(nSize.x - borderW / 2, GetFrameHeightWithSpacing()),
-		ImColor(style.colors[StyleColor::NodeHeader]), nodeStyle.NodeRounding,
-		ImDrawFlags_RoundCornersTop);
-
-	for (auto& pin : pins) {
-		list->AddCircleFilled(pin.first, pinRadius, pin.second);
-	}
+	PopID();
 }
+constexpr auto SEARCH_LIMIT = 5;
 
-void NodeEditor::popups(const Preference& pref) {
-	using namespace ImGui;
+void handleNodeAddition(
+	FilterGraph& g, bool& searchStarted, ImGuiTextFilter& searchFilter) {
+	constexpr auto POP_UP_ID = "add_node_popup";
+	constexpr auto PADDING = 8.0f;
 
-	if (!popup.type.empty()) {
-		ImGui::OpenPopup(popup.type.data());
-		popup.type = {};
-	}
-	for (auto& p : {POPUP_MISSING_INPUT, POPUP_PREVIEW_ERROR}) {
-		if (BeginPopupModal(p, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-			Text(popup.msg);
-			if (Button("Ok")) { CloseCurrentPopup(); }
-			EndPopup();
-		}
-	}
-	if (BeginPopup(POPUP_NODE_OPTIONS)) {
-		auto& node = g.getNode(popup.nodeId);
-		if (Selectable("Play till this node")) {
-			CloseCurrentPopup();
-			auto err = g.play(pref, popup.nodeId);
-			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
-				popup.type = POPUP_MISSING_INPUT;
-				popup.msg = err.message;
-			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
-				popup.type = POPUP_PREVIEW_ERROR;
-				popup.msg = err.message;
-			}
-		}
-		// SameLine();
-		// ImGui::Text("Play till this node");
-		// PushStyleColor(ImGuiCol_Text, IM_COL(0, 255, 0));
-		// PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
-		// PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32_BLACK_TRANS);
-		// PushStyleColor(ImGuiCol_ButtonActive, IM_COL32_BLACK_TRANS);
-		// SPDLOG_INFO("GetStyle().ItemSpacing.x: {}",
-		// GetStyle().ItemSpacing.x); SameLine(); ArrowButton("",
-		// ImGuiDir_Right); PopID(); PopStyleColor(4);
+	const auto& io = ImGui::GetIO();
 
-		if (node.option.size() < node.base().options.size()) {
-			if (BeginMenu("Add options")) {
-				if (searchStarted) {
-					searchStarted = false;
-					SetKeyboardFocusHere();
-				}
-				searchFilter.Draw(" ");
-				int count = 0;
-				int idx = -1;
-				for (const auto& opt : node.base().options) {
-					idx++;
-					if (contains(node.option, idx)) { continue; }
-					if (searchFilter.PassFilter(opt.name.c_str()) ||
-						searchFilter.PassFilter(opt.desc.c_str())) {
-						count++;
-						if (MenuItem(opt.name.c_str())) {
-							node.option[idx] = opt.defaultValue;
-							g.optHook(popup.nodeId, idx, opt.defaultValue);
-							searchFilter.Clear();
-							CloseCurrentPopup();
-						}
-						SameLine();
-						Text(opt.desc);
-					}
-					if (count >= 5) { break; }
-				}
-				EndMenu();
-			}
-		}
-		EndPopup();
-	} else if (
-		SetNextWindowPos(popup.position),
-		SetNextWindowSize({0, GetFrameHeightWithSpacing() * 5}),
-		BeginPopup(
-			POPUP_OPTION_COMPLETION,
-			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
-				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_ChildWindow)) {
-		auto& node = g.getNode(popup.nodeId);
-		const auto& option = node.base().options[popup.optId];
-		auto& value = node.option[popup.optId];
+	const bool open_popup =
+		ImGui::IsKeyReleased(ImGuiKey_Space) && !io.WantTextInput;
 
-		for (auto& elem : option.allowed) {
-			if (absl::StrContainsIgnoreCase(elem.value, value) ||
-				absl::StrContainsIgnoreCase(elem.desc, value)) {
-				if (Selectable(elem.value.c_str())) {
-					node.option[popup.optId] = elem.value;
-				}
-				SameLine();
-				Text(elem.desc);
-			}
-		}
-
-		if (popup.isInputTextEnterPressed ||
-			(!popup.isInputTextActive && !IsWindowFocused()))
-			CloseCurrentPopup();
-
-		EndPopup();
-
-		popup.isInputTextActive = false;
-		popup.isInputTextEnterPressed = false;
-	} else if (BeginPopup(POPUP_OPTION_COLOR)) {
-		auto& node = g.getNode(popup.nodeId);
-		auto& value = node.option[popup.optId];
-		auto color = ColorConvertU32ToFloat4(ColorConvertHexToU32(value));
-		if (ColorPicker4(
-				"##col", &color.x,
-				(pref.style.colorPicker == 0
-					 ? ImGuiColorEditFlags_PickerHueBar
-					 : ImGuiColorEditFlags_PickerHueWheel) |
-					ImGuiColorEditFlags_AlphaBar |
-					ImGuiColorEditFlags_AlphaPreviewHalf)) {
-			value = ColorConvertU32ToHex(ColorConvertFloat4ToU32(color));
-		}
-		EndPopup();
-	} else {
-		popup.nodeId = INVALID_NODE;
-	}
-}
-
-void NodeEditor::searchBar() {
-	using namespace ImGui;
-
-	const auto POP_UP_ID = "add_node_popup";
-	if (ImGui::IsWindowHovered() && !ImGui::IsPopupOpen(POP_UP_ID) &&
-		ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(PADDING, PADDING));
+	if (!ImGui::IsAnyItemHovered() && open_popup) {
 		ImGui::OpenPopup(POP_UP_ID);
 		searchStarted = true;
 	}
 	if (ImGui::BeginPopup(POP_UP_ID)) {
 		int count = 0;
 		if (searchStarted) {
+			searchFilter.Clear();
 			searchStarted = false;
 			ImGui::SetKeyboardFocusHere();
 		}
 		searchFilter.Draw(" ");
-		for (auto& f : g.allFilters()) {
+		for (const auto& f : g.allFilters()) {
 			if (searchFilter.PassFilter(f.name.c_str())) {
 				if (ImGui::Selectable(f.name.c_str())) {
 					g.addNode(f);
 					searchFilter.Clear();
-					CloseCurrentPopup();
+					ImGui::CloseCurrentPopup();
 				}
 				ImGui::SameLine();
 				ImGui::Text("- %s", f.desc.c_str());
-				if (count++ == 5) { break; }
+				if (count++ == SEARCH_LIMIT) { break; }
 			}
+		}
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleVar();
+}
+
+void handleNodeDeletion(FilterGraph& g) {
+	const auto& io = ImGui::GetIO();
+	auto deleteSomething =
+		ImGui::IsKeyReleased(ImGuiKey_X) && !io.WantTextInput;
+	if (!deleteSomething) { return; }
+
+	std::vector<int> selected;
+	selected.resize(ImNodes::NumSelectedNodes(), 0);
+	if (!selected.empty()) {
+		ImNodes::GetSelectedNodes(selected.data());
+		for (auto& id : selected) { g.deleteNode({id}); }
+	}
+
+	selected.resize(ImNodes::NumSelectedLinks(), 0);
+	if (!selected.empty()) {
+		ImNodes::GetSelectedLinks(selected.data());
+		for (auto& id : selected) { g.deleteLink({id}); }
+	}
+}
+
+void drawNodeOptions(
+	FilterGraph& g, FilterNode& node, bool& searchStarted,
+	ImGuiTextFilter& searchFilter, NodeId& selectedNodeId) {
+	if (ImGui::BeginMenu("Add options")) {
+		if (searchStarted) {
+			searchFilter.Clear();
+			searchStarted = false;
+			ImGui::SetKeyboardFocusHere();
+		}
+		searchFilter.Draw(" ");
+		int count = 0;
+		int idx = -1;
+		for (const auto& opt : node.base().options) {
+			idx++;
+			if (contains(node.option, idx)) { continue; }
+			if (searchFilter.PassFilter(opt.name.c_str()) ||
+				searchFilter.PassFilter(opt.desc.c_str())) {
+				count++;
+				if (ImGui::MenuItem(opt.name.c_str())) {
+					node.option[idx] = opt.defaultValue;
+					g.optHook(selectedNodeId, idx, opt.defaultValue);
+					searchFilter.Clear();
+					selectedNodeId = INVALID_NODE;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				ImGui::Text(opt.desc);
+			}
+			if (count >= SEARCH_LIMIT) { break; }
+		}
+		ImGui::EndMenu();
+	}
+}
+
+void handleNodeOptions(
+	FilterGraph& g, NodeId& selectedNodeId, const Preference& pref,
+	bool& searchStarted, ImGuiTextFilter& searchFilter) {
+	constexpr auto POPUP_NODE_OPTIONS = "Node Options";
+	int hoveredId = INVALID_NODE.val;
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+		ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+		ImNodes::IsNodeHovered(&hoveredId)) {
+		selectedNodeId = {hoveredId};
+		ImGui::OpenPopup(POPUP_NODE_OPTIONS);
+	}
+
+	if (ImGui::BeginPopup(POPUP_NODE_OPTIONS)) {
+		auto& node = g.getNode(selectedNodeId);
+		if (ImGui::Selectable("Play till this node")) {
+			ImGui::CloseCurrentPopup();
+			auto err = g.play(pref, selectedNodeId);
+			if (err.code == FilterGraphErrorCode::PLAYER_MISSING_INPUT) {
+				showErrorMessage("Missing Input", err.message);
+				SPDLOG_ERROR("Error while playing: {}", err.message);
+			} else if (err.code == FilterGraphErrorCode::PLAYER_RUNTIME) {
+				showErrorMessage("ffmpeg Error", err.message);
+				SPDLOG_ERROR("Error while playing: {}", err.message);
+			}
+		}
+
+		if (node.option.size() < node.base().options.size()) {
+			drawNodeOptions(
+				g, node, searchStarted, searchFilter, selectedNodeId);
 		}
 		ImGui::EndPopup();
 	}
 }
 
-bool NodeEditor::draw(const Preference& pref) {
-	auto focused = false;
-	if (ImGui::Begin(getName().c_str())) {
-		focused = ImGui::IsWindowFocused();
-		ed::SetCurrentEditor(context.get());
-		ed::Begin(getName().c_str());
+void handleLinks(FilterGraph& g) {
+	int pin1 = 0, pin2 = 0;
+	if (ImNodes::IsLinkCreated(&pin1, &pin2)) {
+		if (g.canAddLink(
+				{static_cast<IdBaseType>(pin1)},
+				{static_cast<IdBaseType>(pin2)})) {
+			g.addLink(
+				{static_cast<IdBaseType>(pin1)},
+				{static_cast<IdBaseType>(pin2)});
+		}
+	}
+
+	int deletedLinkId = 0;
+	if (ImNodes::IsLinkDestroyed(&deletedLinkId)) {
+		g.deleteLink(LinkId{deletedLinkId});
+	}
+}
+
+void NodeEditor::handleEdits(const Preference& pref) {
+	handleNodeAddition(g, searchStarted, searchFilter);
+	handleNodeDeletion(g);
+	handleNodeOptions(g, selectedNodeId, pref, searchStarted, searchFilter);
+	handleLinks(g);
+}
+
+void NodeEditor::draw(const Preference& pref, bool& focused) {
+	constexpr auto minimapFraction = 0.2f;
+	if (ImGui::Begin(
+			getName().c_str(), &isOpen,
+			ImGui::UnsavedDocumentFlag(g.changed()))) {
+		focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+		ImNodes::EditorContextSet(context.get());
+		ImNodes::BeginNodeEditor();
 
 		g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
 			drawNode(pref.style, node, id);
 		});
 
 		g.iterateLinks([](const LinkId& id, const NodeId& s, const NodeId& d) {
-			ed::Link(id.val, s.val, d.val);
+			ImNodes::Link(id.val, s.val, d.val);
 		});
 
-		ed::NodeId contextNodeId;
-		if (ed::ShowNodeContextMenu(&contextNodeId)) {
-			popup.type = POPUP_NODE_OPTIONS;
-			popup.nodeId = {contextNodeId.Get()};
-		}
+		ImNodes::MiniMap(minimapFraction, ImNodesMiniMapLocation_BottomRight);
+		ImNodes::EndNodeEditor();
 
-		if (ed::BeginCreate()) {
-			ed::PinId inputPinId, outputPinId;
-			if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
-				// QueryNewLink returns true if editor want to create new
-				// link between pins.
-				//
-				// Link can be created only for two valid pins, it is up to
-				// you to validate if connection make sense. Editor is happy
-				// to make any.
-				//
-				// Link always goes from input to output. User may choose to
-				// drag link from output pin or input pin. This determine
-				// which pin ids are valid and which are not:
-				//   * input valid, output invalid - user started to drag
-				//   new ling from input pin
-				//   * input invalid, output valid - user started to drag
-				//   new ling from output pin
-				//   * input valid, output valid   - user dragged link over
-				//   other pin, can be validated
-				if (inputPinId && outputPinId) {
-					auto pin1 = inputPinId.Get();
-					auto pin2 = outputPinId.Get();
-					if (g.canAddLink({pin1}, {pin2})) {
-						// ed::AcceptNewItem() return true when user release
-						// mouse button.
-						if (ed::AcceptNewItem()) {
-							const auto& linkId = g.addLink({pin1}, {pin2});
-							if (linkId != INVALID_LINK) {
-								ed::Link(linkId.val, pin1, pin2);
-							}
-						}
-					} else {
-						// You may choose to reject connection between these
-						// nodes by calling ed::RejectNewItem(). This will
-						// allow editor to give visual feedback by changing
-						// link thickness and color.
-						ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
-					}
-				}
-			}
-		}
-		ed::EndCreate();  // Wraps up object creation action handling.
+		if (focused) { handleEdits(pref); }
 
-		// Handle deletion action
-		if (ed::BeginDelete()) {
-			// There may be many links marked for deletion, let's loop over
-			// them.
-			ed::LinkId deletedLinkId;
-			while (ed::QueryDeletedLink(&deletedLinkId)) {
-				// If you agree that link can be deleted, accept deletion.
-				if (ed::AcceptDeletedItem()) {
-					// Then remove link from your data.
-					g.deleteLink(LinkId{deletedLinkId.Get()});
-				}
-			}
-			ed::NodeId deletedNodeId;
-			while (ed::QueryDeletedNode(&deletedNodeId)) {
-				if (ed::AcceptDeletedItem(false)) {
-					g.deleteNode(NodeId{deletedNodeId.Get()});
-				}
-			}
-		}
-		ed::EndDelete();  // Wrap up deletion action
-
-		ed::End();
-		ed::SetCurrentEditor(nullptr);
-
-		searchBar();
-		popups(pref);
+		ImNodes::EditorContextSet(nullptr);
 	}
 	ImGui::End();
-	return focused;
+
+	if (isClosed()) { close(); }
+}
+
+void NodeEditor::close() {
+	using namespace ImGui;
+	isOpen = false;
+
+	switch (UnsavedDocumentClose(
+		g.changed(), isOpen, "Unsaved Graph",
+		"Do you want to save the current graph?")) {
+		case UnsavedDocumentAction::SAVE_CHANGES:
+			(void)save();
+			break;
+		case UnsavedDocumentAction::DISCARD_CHANGES:
+			break;
+		case UnsavedDocumentAction::CANCEL_CLOSE:
+			isOpen = true;
+			break;
+		case UnsavedDocumentAction::NO_OP:
+			break;
+	}
 }
 
 namespace nlohmann {
@@ -461,29 +429,37 @@ namespace nlohmann {
 	};
 }  // namespace nlohmann
 
-bool NodeEditor::save(const std::filesystem::path& path) const {
+bool NodeEditor::save() {
+	if (getPath().empty()) {
+		auto path = saveFile("*.json");
+		if (!path.has_value()) { return false; }
+		setPath(path.value());
+	}
 	nlohmann::json obj;
 	obj["nodes"] = nlohmann::json::array();
-	g.iterateNodes([&](const FilterNode& node, const NodeId& id) {
-		nlohmann::json elem;
-		elem["id"] = id;
-		elem["name"] = node.name;
-		const auto& options = node.base().options;
-		for (auto& [optIdx, optValue] : node.option) {
-			nlohmann::json opt;
-			opt["key"] = options[optIdx].name;
-			opt["value"] = optValue;
-			elem["option"].push_back(opt);
-		}
-		elem["inputs"] = node.inputSocketIds;
-		elem["outputs"] = node.outputSocketIds;
-		g.inputSockets(
-			id, [&](const Socket&, const NodeId& dest, const NodeId& src) {
-				elem["edges"].push_back({{"src", src}, {"dest", dest}});
-			});
-		obj["nodes"].push_back(elem);
-	});
+	g.iterateNodes(
+		[&](const FilterNode& node, const NodeId& id) {
+			nlohmann::json elem;
+			elem["id"] = id;
+			elem["name"] = node.name;
+			const auto& options = node.base().options;
+			for (const auto& [optIdx, optValue] : node.option) {
+				nlohmann::json opt;
+				opt["key"] = options[optIdx].name;
+				opt["value"] = optValue;
+				elem["option"].push_back(opt);
+			}
+			elem["inputs"] = node.inputSocketIds;
+			elem["outputs"] = node.outputSocketIds;
+			g.inputSockets(
+				id, [&](const Socket&, const NodeId& dest, const NodeId& src) {
+					elem["edges"].push_back({{"src", src}, {"dest", dest}});
+				});
+			obj["nodes"].push_back(elem);
+		},
+		NodeIterOrder::Topological);
 	std::ofstream o(path, std::ios_base::binary);
+	g.resetChanged();
 	o << std::setw(4) << obj;
 	return true;
 }
@@ -504,17 +480,31 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 		auto nId = g.addNode(*base);
 		mapping[id] = nId;
 
+		if (elem.contains("option")) {
+			for (const auto& opt : elem["option"]) {
+				auto name = opt["key"].template get<std::string>();
+				auto value = opt["value"].template get<std::string>();
+				const auto& optionBase = std::find_if(
+					base->options.begin(), base->options.end(),
+					[&](const Option& option) { return option.name == name; });
+
+				auto optId = std::distance(base->options.begin(), optionBase);
+				g.getNode(nId).option[optId] = value;
+				g.optHook(nId, optId, value);
+			}
+		}
+
 		{
-			const auto& skts = g.getNode(nId).inputSocketIds;
+			const auto& sockets = g.getNode(nId).inputSocketIds;
 			const auto& ints = elem["inputs"].template get<std::vector<int>>();
-			const auto limit = std::min(skts.size(), ints.size());
-			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
+			const auto limit = std::min(sockets.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = sockets[i]; }
 		}
 		{
-			const auto& skts = g.getNode(nId).outputSocketIds;
+			const auto& sockets = g.getNode(nId).outputSocketIds;
 			const auto& ints = elem["outputs"].template get<std::vector<int>>();
-			const auto limit = std::min(skts.size(), ints.size());
-			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = skts[i]; }
+			const auto limit = std::min(sockets.size(), ints.size());
+			for (auto i = 0u; i < limit; ++i) { mapping[ints[i]] = sockets[i]; }
 		}
 		if (elem.find("edges") != elem.end()) {
 			for (const auto& edge : elem["edges"]) {
@@ -524,12 +514,13 @@ bool NodeEditor::load(const std::filesystem::path& path) {
 			}
 		}
 	}
+	g.resetChanged();
 	this->path = std::filesystem::absolute(path);
 	name = path.filename().string();
 	return true;
 }
 
-const std::string NodeEditor::getName() const {
+std::string NodeEditor::getName() const {
 	if (!path.empty()) { return path.filename().string(); }
 	return name;
 }

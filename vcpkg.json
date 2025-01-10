@@ -1,29 +1,19 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "name": "ffmpeg-node-editor",
-    "builtin-baseline": "0e47c1985273129e4d0ee52ff73bed9125555de8",
     "dependencies": [
-        "abseil",
-        "glfw3",
-        "gtest",
+        "backward-cpp",
         {
-            "name": "imgui",
+            "name": "glfw3",
             "features": [
-                "glfw-binding",
-                "opengl3-binding"
+                {
+                    "name": "wayland",
+                    "platform": "linux"
+                }
             ]
         },
-        "imgui-node-editor",
-        "nativefiledialog",
+        "gtest",
         "nlohmann-json",
-        "re2",
-        "spdlog",
-        "tiny-process-library"
-    ],
-    "overrides": [
-        {
-            "name": "imgui-node-editor",
-            "version": "0.9.2"
-        }
+        "spdlog"
     ]
 }

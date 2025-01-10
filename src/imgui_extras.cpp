@@ -1,21 +1,21 @@
 #include "imgui_extras.hpp"
 
-#include <absl/strings/ascii.h>
-#include <absl/strings/match.h>
-#include <absl/strings/numbers.h>
-#include <absl/strings/string_view.h>
+#include <IconsFontAwesome6.h>
 #include <fmt/core.h>
 #include <imgui.h>
 
-#include <algorithm>
-#include <iterator>
+#include <array>
+
+#include "file_utils.hpp"
+#include "string_utils.hpp"
+#include "util.hpp"
 
 struct colorKey {
-	absl::string_view name;
+	std::string_view name;
 	ImU32 hex;
 };
 // https://www.w3.org/TR/css-color-3/#svg-color
-const colorKey COLORS[] = {
+constexpr std::array<colorKey, 148> COLORS = {{
 	{"aliceblue", 0xf0f8ff},
 	{"antiquewhite", 0xfaebd7},
 	{"aqua", 0x00ffff},
@@ -164,46 +164,138 @@ const colorKey COLORS[] = {
 	{"whitesmoke", 0xf5f5f5},
 	{"yellow", 0xffff00},
 	{"yellowgreen", 0x9acd32},
-};
-
-const auto COLORS_END = COLORS + std::size(COLORS);
-bool compare_colorKey(const colorKey& a, const absl::string_view& b) {
-	return a.name < b;
-	// _strnicmp(a.name.data(), b.data(), std::min(a.name.size(), b.size())) <
-	// 0;
-}
+}};
 
 namespace ImGui {
-	ImU32 ColorConvertHexToU32(absl::string_view hex) {
-		ImU32 val = 0, alpha = 0xff;
+	ImU32 ColorConvertHexToU32(std::string_view hex) {
+		constexpr auto MAX_VALUE = 0xFF;
+		ImU32 r = 0, g = 0, b = 0, val = 0, a = MAX_VALUE;
 		if (hex.empty()) { return val; }
-		if (auto i = hex.find('@'); i != hex.npos) {
+		if (auto i = hex.find('@'); i != std::string_view::npos) {
 			auto alphaPart = hex.substr(i);
 			alphaPart.remove_prefix(1);
 			hex.remove_suffix(hex.size() - i);
-			if (absl::SimpleHexAtoi(alphaPart, &alpha)) {
-			} else if (double v = 0; absl::SimpleAtod(alphaPart, &v)) {
-				alpha = (ImU32)(v * 255);
+			if (str::stoi(alphaPart, a, 16)) {
+			} else if (double v = 0; str::stod(alphaPart, v)) {
+				a = (ImU32)(v * MAX_VALUE);
 			} else {
 				return val;
 			}
 		}
 		if (hex[0] == '#') { hex.remove_prefix(1); }
-		if (absl::SimpleHexAtoi(hex, &val)) {
+		if (str::starts_with(hex, "0x", true)) { hex.remove_prefix(2); }
+		if (str::stoi(hex, val, 16)) {
 		} else if (auto itr = std::lower_bound(
-					   COLORS, COLORS_END, absl::AsciiStrToLower(hex),
-					   compare_colorKey);
-				   itr != COLORS_END &&
-				   absl::EqualsIgnoreCase(itr->name, hex)) {
+					   COLORS.begin(), COLORS.end(), str::tolower(hex),
+					   [](const auto& a, const auto& b) { return a.name < b; });
+				   itr != COLORS.end() && str::equals(itr->name, hex, true)) {
 			val = itr->hex & 0x00FFFFFF;
 		} else {
 			return val;
 		}
-		if (val <= 0xFFFFFF) { val = (val << 8) + alpha; }
-		return _byteswap_ulong(val);
+		if (hex.size() <= 6) {
+			r = (val & 0xFF0000) >> 16;
+			g = (val & 0x00FF00) >> 8;
+			b = (val & 0x0000FF);
+		} else {
+			r = (val & 0xFF000000) >> 24;
+			g = (val & 0x00FF0000) >> 16;
+			b = (val & 0x0000FF00) >> 8;
+			a = (val & 0x000000FF);
+		}
+		return IM_COL32(r, g, b, a);
 	}
 
 	std::string ColorConvertU32ToHex(ImU32 val) {
-		return fmt::format("#{:x}", _byteswap_ulong(val));
+		const auto r = (val >> IM_COL32_R_SHIFT) & 0xFF,
+				   g = (val >> IM_COL32_G_SHIFT) & 0xFF,
+				   b = (val >> IM_COL32_B_SHIFT) & 0xFF,
+				   a = (val >> IM_COL32_A_SHIFT) & 0xFF;
+		return fmt::format("#{:02X}{:02X}{:02X}{:02X}", r, g, b, a);
 	}
+
+	bool InputFont(const char* label, std::string& str, float width) {
+#if defined(APP_OS_WINDOWS)
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (FontButton(ICON_FA_FONT)) {
+			auto path = selectFont();
+			if (path.has_value()) {
+				str = path.value().string();
+				return true;
+			}
+		}
+		return false;
+#else
+		return InputText(label, &str);
+#endif
+	}
+
+	bool InputFile(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (FontButton(ICON_FA_FOLDER_OPEN)) {
+			auto path = openFile();
+			if (path.has_value()) {
+				str = path->string();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool InputColor(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		auto color = ColorConvertHexToFloat4(str);
+		if (ColorEdit4(
+				"##col", &color.x,
+				ImGuiColorEditFlags_AlphaPreviewHalf |
+					ImGuiColorEditFlags_AlphaBar |
+					ImGuiColorEditFlags_NoOptions)) {
+			str = ColorConvertFloat4ToHex(color);
+			return true;
+		}
+		return false;
+	}
+
+	bool InputCheckbox(const char* label, std::string& str, float width) {
+		PushItemWidth(std::max(width - GetFrameHeight(), 0.0f));
+		defer w([&]() { PopItemWidth(); });
+		const int TRUE = 1, FALSE = 0, MAYBE = 2;
+		int v = FALSE;
+		if (str == "1") {
+			v = TRUE | MAYBE;
+		} else if (str != "0") {
+			v = MAYBE;
+		}
+		if (InputText(label, &str)) { return true; }
+		Spring(0, 0);
+		if (CheckboxFlags("##b", &v, TRUE | MAYBE)) {
+			if (v == FALSE) {
+				str = "0";
+			} else {
+				str = "1";
+			}
+			return true;
+		}
+		return false;
+	}
+	UnsavedDocumentAction UnsavedDocumentClose(
+		bool unsaved, bool open, std::string const& title,
+		std::string const& text) {
+		if (open || !unsaved) { return UnsavedDocumentAction::NO_OP; }
+		auto result = showActionDialog(title, text);
+		if (result == 0) { return UnsavedDocumentAction::CANCEL_CLOSE; }
+		if (result == 1) { return UnsavedDocumentAction::SAVE_CHANGES; }
+		if (result == 2) { return UnsavedDocumentAction::DISCARD_CHANGES; }
+		return UnsavedDocumentAction::NO_OP;
+	}
+
 };	// namespace ImGui
