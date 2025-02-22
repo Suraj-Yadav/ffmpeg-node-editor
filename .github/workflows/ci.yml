@@ -21,7 +21,7 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - run: pip install PyYAML requests
-      - run: sudo apt install libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules libglu1-mesa-dev
+      - run: sudo apt install libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules xorg-dev
       - name: cmake configure
         run: |
           export CMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
